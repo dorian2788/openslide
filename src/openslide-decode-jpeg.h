@@ -26,7 +26,9 @@
 #undef HAVE_STDLIB_H
 #include <jpeglib.h>
 #undef HAVE_STDLIB_H
-#include <config.h>  // fix damage
+#ifndef CMAKE_BUILD
+  #include <config.h>   // fix damage
+#endif
 
 #include <stdio.h>
 #include <stdint.h>

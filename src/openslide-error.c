@@ -19,7 +19,9 @@
  *
  */
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#endif
 
 #include "openslide-private.h"
 #include "openslide-error.h"

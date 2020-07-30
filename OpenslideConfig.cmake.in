@@ -1,0 +1,20 @@
+# Config file for the Openslide package
+
+get_filename_component(Openslide_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+list(APPEND CMAKE_MODULE_PATH "${Openslide_CMAKE_DIR}")
+
+include(CMakeFindDependencyMacro)
+
+if(MSVC)
+  set(CMAKE_CXX_FLAGS "/wd4018 /wd4244 /wd4267 /wd4305 ${CMAKE_CXX_FLAGS}")
+endif()
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+include("${Openslide_CMAKE_DIR}/OpenslideTargets.cmake")
+include("${Openslide_CMAKE_DIR}/OpenslideConfigVersion.cmake")
+
+get_target_property(FULL_Openslide_INCLUDE_DIRS Openslide::dark INTERFACE_INCLUDE_DIRECTORIES)
+list(GET FULL_Openslide_INCLUDE_DIRS 0 Openslide_INCLUDE_DIR)
+get_filename_component(Openslide_INCLUDE_DIR "${Openslide_INCLUDE_DIR}" REALPATH)
+
+find_package_handle_standard_args(Openslide REQUIRED_VARS Openslide_INCLUDE_DIR VERSION_VAR PACKAGE_VERSION)

@@ -19,7 +19,9 @@
  *
  */
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#endif
 
 #ifdef WIN32
 #define _WIN32_WINNT 0x0600

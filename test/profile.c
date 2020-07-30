@@ -26,7 +26,9 @@
 #include <openslide.h>
 #include "openslide-common.h"
 
-#include "config.h"
+#ifndef CMAKE_BUILD
+  #include "config.h"
+#endif
 #ifdef HAVE_VALGRIND
 #include <callgrind.h>
 #endif

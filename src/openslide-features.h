@@ -24,7 +24,7 @@
 
 
 #ifndef __cplusplus
-#  ifdef _MSC_VER
+/*#  ifdef _MSC_VER
 #    ifndef bool
 #      define bool unsigned char
 #    endif
@@ -37,19 +37,19 @@
 #    ifndef __bool_true_false_are_defined
 #      define __bool_true_false_are_defined 1
 #    endif
-#  else
+#  else*/
 #    include <stdbool.h>
-#  endif
+//#  endif
 #endif
 
 
 // for exporting from shared libraries or DLLs
-#if defined _WIN32
-#  ifdef _OPENSLIDE_BUILDING_DLL
+#if defined _WIN32 || defined _WIN64
+//#  ifdef _OPENSLIDE_BUILDING_DLL
 #    define OPENSLIDE_PUBLIC() __declspec(dllexport)
-#  else
-#    define OPENSLIDE_PUBLIC() __declspec(dllimport)
-#  endif
+//#  else
+//#    define OPENSLIDE_PUBLIC() __declspec(dllimport)
+//#  endif
 #elif defined OPENSLIDE_SIMPLIFY_HEADERS
 // avoid constructs that could confuse a simplistic header parser
 # define OPENSLIDE_PUBLIC()

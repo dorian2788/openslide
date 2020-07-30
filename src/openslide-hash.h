@@ -22,7 +22,9 @@
 #ifndef OPENSLIDE_OPENSLIDE_HASH_H_
 #define OPENSLIDE_OPENSLIDE_HASH_H_
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#endif
 
 #include "openslide.h"
 

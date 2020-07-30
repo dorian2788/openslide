@@ -19,7 +19,12 @@
  *
  */
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#else
+  #define STRINGIFY(x) #x
+  #define SUFFIXED_VERSION STRINGIFY(Openslide_VERSION)
+#endif
 
 #include "openslide-private.h"
 #include "openslide-decode-tifflike.h"
@@ -57,7 +62,7 @@ static bool openslide_was_dynamically_loaded;
 // called from shared-library constructor!
 static void __attribute__((constructor)) _openslide_init(void) {
   // activate threads
-  if (!g_thread_supported()) {
+  if (!g_thread_get_initialized()) {
     g_thread_init(NULL);
   }
   // initialize GObject

@@ -20,7 +20,14 @@
  *
  */
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#endif
+#if defined _WIN32 || defined _WIN64
+  #define FOPEN_CLOEXEC_FLAG "N"
+#else
+  #define FOPEN_CLOEXEC_FLAG "e"
+#endif
 
 #include "openslide-private.h"
 

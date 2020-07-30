@@ -22,7 +22,9 @@
 #ifndef OPENSLIDE_OPENSLIDE_PRIVATE_H_
 #define OPENSLIDE_OPENSLIDE_PRIVATE_H_
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#endif
 
 #include "openslide.h"
 #include "openslide-hash.h"
@@ -334,10 +336,10 @@ void _openslide_performance_warn_once(gint *warned_flag,
 
 /* Tables */
 // YCbCr -> RGB chroma contributions
-extern const int16_t _openslide_R_Cr[256];
-extern const int32_t _openslide_G_Cb[256];
-extern const int32_t _openslide_G_Cr[256];
-extern const int16_t _openslide_B_Cb[256];
+const int16_t _openslide_R_Cr[256];
+const int32_t _openslide_G_Cb[256];
+const int32_t _openslide_G_Cr[256];
+const int16_t _openslide_B_Cb[256];
 
 // deprecated prefetch stuff (maybe we'll undeprecate it someday),
 // still needs these declarations for ABI compat

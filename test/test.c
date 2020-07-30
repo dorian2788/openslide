@@ -21,7 +21,9 @@
 
 #define _GNU_SOURCE
 
-#include "config.h"
+#ifndef CMAKE_BUILD
+  #include "config.h"
+#endif
 #include "openslide.h"
 #include "openslide-common.h"
 

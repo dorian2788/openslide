@@ -38,6 +38,11 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+  #define fseeko _fseeki64
+  #define ftello _ftelli64
+#endif
+
 /**
  * The main OpenSlide type.
  */
@@ -126,7 +131,7 @@ void openslide_get_level0_dimensions(openslide_t *osr, int64_t *w, int64_t *h);
  */
 OPENSLIDE_PUBLIC()
 void openslide_get_level_dimensions(openslide_t *osr, int32_t level,
-				    int64_t *w, int64_t *h);
+            int64_t *w, int64_t *h);
 
 
 /**
@@ -152,7 +157,7 @@ double openslide_get_level_downsample(openslide_t *osr, int32_t level);
  */
 OPENSLIDE_PUBLIC()
 int32_t openslide_get_best_level_for_downsample(openslide_t *osr,
-						double downsample);
+            double downsample);
 
 /**
  * Copy pre-multiplied ARGB data from a whole slide image.
@@ -173,10 +178,10 @@ int32_t openslide_get_best_level_for_downsample(openslide_t *osr,
  */
 OPENSLIDE_PUBLIC()
 void openslide_read_region(openslide_t *osr,
-			   uint32_t *dest,
-			   int64_t x, int64_t y,
-			   int32_t level,
-			   int64_t w, int64_t h);
+                           uint32_t *dest,
+                           int64_t x, int64_t y,
+                           int32_t level,
+                           int64_t w, int64_t h);
 
 
 /**
@@ -399,8 +404,8 @@ const char * const *openslide_get_associated_image_names(openslide_t *osr);
  */
 OPENSLIDE_PUBLIC()
 void openslide_get_associated_image_dimensions(openslide_t *osr,
-					       const char *name,
-					       int64_t *w, int64_t *h);
+                                               const char *name,
+                                               int64_t *w, int64_t *h);
 
 
 /**
@@ -420,8 +425,8 @@ void openslide_get_associated_image_dimensions(openslide_t *osr,
  */
 OPENSLIDE_PUBLIC()
 void openslide_read_associated_image(openslide_t *osr,
-				     const char *name,
-				     uint32_t *dest);
+                                     const char *name,
+                                     uint32_t *dest);
 //@}
 
 /**
@@ -514,7 +519,7 @@ void openslide_get_layer0_dimensions(openslide_t *osr, int64_t *w, int64_t *h);
 OPENSLIDE_PUBLIC()
 OPENSLIDE_DEPRECATED_FOR(openslide_get_level_dimensions)
 void openslide_get_layer_dimensions(openslide_t *osr, int32_t level,
-				    int64_t *w, int64_t *h);
+                                    int64_t *w, int64_t *h);
 
 
 /**
@@ -542,7 +547,7 @@ double openslide_get_layer_downsample(openslide_t *osr, int32_t level);
 OPENSLIDE_PUBLIC()
 OPENSLIDE_DEPRECATED_FOR(openslide_get_best_level_for_downsample)
 int32_t openslide_get_best_layer_for_downsample(openslide_t *osr,
-						double downsample);
+                                                double downsample);
 
 /**
  * Get the comment (if any) for this image. Exactly equivalent to calling
@@ -564,9 +569,9 @@ const char *openslide_get_comment(openslide_t *osr);
 // since the functions they replace were never implemented
 int _openslide_give_prefetch_hint_UNIMPLEMENTED(void);
 void _openslide_cancel_prefetch_hint_UNIMPLEMENTED(void);
-#define openslide_give_prefetch_hint(osr, x, y, level, w, h)	\
+#define openslide_give_prefetch_hint(osr, x, y, level, w, h)  \
   _openslide_give_prefetch_hint_UNIMPLEMENTED(-1);
-#define openslide_cancel_prefetch_hint(osr, prefetch_id)	\
+#define openslide_cancel_prefetch_hint(osr, prefetch_id)  \
   _openslide_cancel_prefetch_hint_UNIMPLEMENTED(-1)
 #endif
 

@@ -19,7 +19,32 @@
  *  <http://www.gnu.org/licenses/>.
  */
 
-#include <config.h>
+#ifndef CMAKE_BUILD
+  #include <config.h>
+#endif
+
+#include <limits.h>
+#include <stddef.h>
+
+#if defined _WIN32 || defined _WIN64
+
+  #if SIZE_MAX == UINT_MAX
+  typedef int ssize_t;        /* common 32 bit case */
+  #define SSIZE_MAX NT_MAX
+  #elif SIZE_MAX == ULONG_MAX
+  typedef long ssize_t;       /* linux 64 bits */
+  #define SSIZE_MAX ULONG_MAX
+  #elif SIZE_MAX == ULLONG_MAX
+  typedef long long ssize_t;  /* windows 64 bits */
+  #define SSIZE_MAX ULLONG_MAX
+  #elif SIZE_MAX == USHRT_MAX
+  typedef short ssize_t;      /* is this even possible? */
+  #define SSIZE_MAX USHRT_MAX
+  #else
+  #error platform has exotic SIZE_MAX
+  #endif
+
+#endif
 
 #include "openslide-private.h"
 #include "openslide-decode-tifflike.h"
@@ -108,8 +133,11 @@ static void fix_byte_order(void *data, int32_t size, int64_t count,
 // only sets *ok on failure
 static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
   g_assert(ok != NULL);
-
+#ifdef _MSC_VER
+  uint8_t buf = (uint8_t*)calloc(size, sizeof(uint8_t));
+#else
   uint8_t buf[size];
+#endif
   if (fread(buf, size, 1, f) != 1) {
     *ok = false;
     return 0;
@@ -119,21 +147,33 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
   case 1: {
     uint8_t result;
     memcpy(&result, buf, sizeof(result));
+#ifdef _MSC_VER
+    free(buf);
+#endif    
     return result;
   }
   case 2: {
     uint16_t result;
     memcpy(&result, buf, sizeof(result));
+#ifdef _MSC_VER
+    free(buf);
+#endif    
     return result;
   }
   case 4: {
     uint32_t result;
     memcpy(&result, buf, sizeof(result));
+#ifdef _MSC_VER
+    free(buf);
+#endif    
     return result;
   }
   case 8: {
     uint64_t result;
     memcpy(&result, buf, sizeof(result));
+#ifdef _MSC_VER
+    free(buf);
+#endif    
     return result;
   }
   default:
@@ -492,10 +532,17 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
     }
 
     // read in the value/offset
+#ifdef _MSC_VER
+    uint8_t value = (uint8_t*)calloc(bigtiff ? 8 : 4, sizeof(uint8_t));
+#else    
     uint8_t value[bigtiff ? 8 : 4];
+#endif
     if (fread(value, sizeof(value), 1, f) != 1) {
       g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
                   "Cannot read value/offset");
+#ifdef _MSC_VER
+      free(value);
+#endif            
       goto FAIL;
     }
 
@@ -504,6 +551,9 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
       // yes
       fix_byte_order(value, value_size, count, big_endian);
       if (!set_item_values(item, value, err)) {
+#ifdef _MSC_VER
+        free(value);
+#endif                
         goto FAIL;
       }
 
@@ -512,11 +562,17 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
       if (bigtiff) {
         memcpy(&item->offset, value, 8);
         fix_byte_order(&item->offset, sizeof(item->offset), 1, big_endian);
+#ifdef _MSC_VER
+        free(value);
+#endif                
       } else {
         uint32_t off32;
         memcpy(&off32, value, 4);
         fix_byte_order(&off32, sizeof(off32), 1, big_endian);
         item->offset = off32;
+#ifdef _MSC_VER
+        free(value);
+#endif                
       }
 
       if (ndpi) {

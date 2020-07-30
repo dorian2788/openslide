@@ -1,0 +1,3 @@
+#define MAJOR_VERSION @Openslide_MAJOR_VERSION@
+#define MINOR_VERSION @Openslide_MINOR_VERSION@
+#define PATCH_VERSION @Openslide_PATCH_VERSION@
