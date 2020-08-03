@@ -54,3 +54,4 @@ Makefile.in
 /share/openslide/*
 [Ll]ib
 [Bb]uild*/
+[Ii]nclude/openslide/*

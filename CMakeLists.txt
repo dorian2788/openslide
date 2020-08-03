@@ -10,7 +10,7 @@ set(Openslide_VERSION ${Openslide_MAJOR_VERSION}.${Openslide_MINOR_VERSION}.${Op
 if (MSVC)
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /DOpenslide_VERSION=\"${Openslide_VERSION}\"")
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} /DOpenslide_VERSION=\"${Openslide_VERSION}\"")
-else () 
+else ()
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DOpenslide_VERSION=\"${Openslide_VERSION}\"")
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DOpenslide_VERSION=\"${Openslide_VERSION}\"")
 endif()
@@ -52,10 +52,10 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Install prefix" FORCE)
 endif()
 
-set(INSTALL_BIN_DIR      "${CMAKE_CURRENT_LIST_DIR}/bin"                 CACHE PATH "Path where exe and dll will be installed")
-set(INSTALL_LIB_DIR      "${CMAKE_CURRENT_LIST_DIR}/lib"                 CACHE PATH "Path where lib will be installed")
-set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/include/openslide"   CACHE PATH "Path where headers will be installed")
-set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"     CACHE PATH "Path where cmake configs will be installed")
+set(INSTALL_BIN_DIR      "${CMAKE_CURRENT_LIST_DIR}/bin"  CACHE PATH "Path where exe and dll will be installed")
+set(INSTALL_LIB_DIR      "${CMAKE_CURRENT_LIST_DIR}/lib"  CACHE PATH "Path where lib will be installed")
+set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/include/openslide"              CACHE PATH "Path where headers will be installed")
+set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"                CACHE PATH "Path where cmake configs will be installed")
 
 set(CMAKE_DEBUG_POSTFIX d)
 
@@ -90,7 +90,7 @@ find_package(OpenJPEG REQUIRED)
 if (MSVC)
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} /DHAVE_OPENJPEG2")
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /DHAVE_OPENJPEG2")
-else () 
+else ()
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DHAVE_OPENJPEG2")
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DHAVE_OPENJPEG2")
 endif()
@@ -180,10 +180,16 @@ list(REMOVE_ITEM sources
 
 add_library(${openslidelib} ${sources} ${headers})
 set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(${openslidelib} PRIVATE ${linked_libs})
+target_compile_definitions(${openslidelib} PRIVATE LIB_EXPORTS=1)
+target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${Openslide_INSTALL_INCLUDE_DIR}>)
+target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
+target_compile_definitions(${openslidelib} PRIVATE -DUSE_CMAKE_LIBS)
 target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 
-install(TARGETS openslide EXPORT OpenslideTargets
+set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${headers}")
+set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
+
+install(TARGETS ${openslidelib} EXPORT OpenslideTargets
   RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
   LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
   ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
