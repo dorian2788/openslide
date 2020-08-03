@@ -159,6 +159,13 @@ configure_file(
   "${CMAKE_CURRENT_LIST_DIR}/src/version.h.in"
   "${CMAKE_CURRENT_LIST_DIR}/src/version.h"
 )
+#set variables for compatibility with configure.ac
+set (prefix ${CMAKE_INSTALL_PREFIX})
+set (libdir ${CMAKE_INSTALL_PREFIX}/lib)
+set (includedir ${CMAKE_INSTALL_PREFIX}/include)
+set (VERSION ${Openslide_VERSION})
+configure_file(${CMAKE_SOURCE_DIR}/openslide.pc.in ${CMAKE_SOURCE_DIR}/openslide.pc @ONLY)
+message(STATUS "Pkg-config generated")
 
 set (openslidelib openslide)
 
