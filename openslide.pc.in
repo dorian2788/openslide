@@ -7,5 +7,5 @@ Name: openslide
 Description: A library for reading whole slide images.
 
 Version: @VERSION@
-Libs: -L${libdir} -lopenslide
+Libs: -L${libdir} -l@CMAKE_STATIC_LIBRARY_PREFIX@openslide
 Cflags: -I${includedir}/openslide
