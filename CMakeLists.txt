@@ -52,10 +52,10 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Install prefix" FORCE)
 endif()
 
-set(INSTALL_BIN_DIR      "${CMAKE_CURRENT_LIST_DIR}/bin"  CACHE PATH "Path where exe and dll will be installed")
-set(INSTALL_LIB_DIR      "${CMAKE_CURRENT_LIST_DIR}/lib"  CACHE PATH "Path where lib will be installed")
-set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/include/openslide"              CACHE PATH "Path where headers will be installed")
-set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"                CACHE PATH "Path where cmake configs will be installed")
+set(INSTALL_BIN_DIR      "${CMAKE_CURRENT_LIST_DIR}/bin"                      CACHE PATH "Path where exe and dll will be installed")
+set(INSTALL_LIB_DIR      "${CMAKE_CURRENT_LIST_DIR}/lib"                      CACHE PATH "Path where lib will be installed")
+set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/share/include/openslide"  CACHE PATH "Path where headers will be installed")
+set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"          CACHE PATH "Path where cmake configs will be installed")
 
 set(CMAKE_DEBUG_POSTFIX d)
 
@@ -180,11 +180,11 @@ list(REMOVE_ITEM sources
 
 add_library(${openslidelib} ${sources} ${headers})
 set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_definitions(${openslidelib} PRIVATE LIB_EXPORTS=1)
+#target_compile_definitions(${openslidelib} PRIVATE LIB_EXPORTS=1)
 target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${Openslide_INSTALL_INCLUDE_DIR}>)
 target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
-target_compile_definitions(${openslidelib} PRIVATE -DUSE_CMAKE_LIBS)
-target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
+#target_compile_definitions(${openslidelib} PRIVATE -DUSE_CMAKE_LIBS)
+#target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 
 set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${headers}")
 set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
