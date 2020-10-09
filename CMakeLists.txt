@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 3.14.3)
 
+option(BUILD_SHARED_LIBS "" ON)
+
 set(Openslide_MAJOR_VERSION 3)
 set(Openslide_MINOR_VERSION 4)
 set(Openslide_PATCH_VERSION 1)
@@ -184,7 +186,10 @@ set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${Openslide_INSTALL_INCLUDE_DIR}>)
 target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
 #target_compile_definitions(${openslidelib} PRIVATE -DUSE_CMAKE_LIBS)
-#target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
+
+if(BUILD_SHARED_LIBS)
+  target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
+endif()
 
 set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${headers}")
 set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
