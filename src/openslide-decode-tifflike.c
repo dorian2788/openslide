@@ -134,7 +134,7 @@ static void fix_byte_order(void *data, int32_t size, int64_t count,
 static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
   g_assert(ok != NULL);
 #ifdef _MSC_VER
-  uint8_t buf = (uint8_t*)calloc(size, sizeof(uint8_t));
+  uint8_t* buf = (uint8_t*)calloc(size, sizeof(uint8_t));
 #else
   uint8_t buf[size];
 #endif
@@ -178,6 +178,7 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
   }
   default:
     g_assert_not_reached();
+    return 0;
   }
 }
 
@@ -533,7 +534,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
 
     // read in the value/offset
 #ifdef _MSC_VER
-    uint8_t value = (uint8_t*)calloc(bigtiff ? 8 : 4, sizeof(uint8_t));
+    uint8_t* value = (uint8_t*)calloc(bigtiff ? 8 : 4, sizeof(uint8_t));
 #else    
     uint8_t value[bigtiff ? 8 : 4];
 #endif
