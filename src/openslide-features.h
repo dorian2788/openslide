@@ -45,11 +45,11 @@
 
 // for exporting from shared libraries or DLLs
 #if defined _WIN32 || defined _WIN64
-//#  ifdef _OPENSLIDE_BUILDING_DLL
+#  ifdef _OPENSLIDE_BUILDING_DLL
 #    define OPENSLIDE_PUBLIC() __declspec(dllexport)
-//#  else
-//#    define OPENSLIDE_PUBLIC() __declspec(dllimport)
-//#  endif
+#  else
+#    define OPENSLIDE_PUBLIC() __declspec(dllimport)
+#  endif
 #elif defined OPENSLIDE_SIMPLIFY_HEADERS
 // avoid constructs that could confuse a simplistic header parser
 # define OPENSLIDE_PUBLIC()

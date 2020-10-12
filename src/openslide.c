@@ -39,6 +39,11 @@
 #include "openslide-cairo.h"
 #include "openslide-error.h"
 
+#if defined _WIN32 || defined _WIN64
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 const char _openslide_release_info[] = "OpenSlide " SUFFIXED_VERSION ", copyright (C) 2007-2016 Carnegie Mellon University and others.\nLicensed under the GNU Lesser General Public License, version 2.1.";
 
 static const char * const EMPTY_STRING_ARRAY[] = { NULL };
@@ -59,6 +64,49 @@ static const struct _openslide_format *formats[] = {
 
 static bool openslide_was_dynamically_loaded;
 
+
+#if defined _WIN32 || defined _WIN64
+BOOL WINAPI DllMain (
+    HINSTANCE const instance,  // handle to DLL module
+    DWORD     const reason,    // reason for calling function
+    LPVOID    const reserved)  // reserved
+{
+    // Perform actions based on the reason for calling.
+    switch (reason)
+    {
+    case DLL_PROCESS_ATTACH:
+      // activate threads
+      if (!g_thread_get_initialized()) {
+        g_thread_init(NULL);
+      }
+      // initialize GObject
+      g_type_init();
+      // work around thread-safety problems in glib < 2.48.1 with first
+      // g_key_file_new() call
+      // https://bugzilla.gnome.org/show_bug.cgi?id=748474
+      g_get_language_names();
+      // init libxml2
+      xmlInitParser();
+      // parse debug options
+      _openslide_debug_init();
+      openslide_was_dynamically_loaded = true;
+      break;
+
+    case DLL_THREAD_ATTACH:
+      // Do thread-specific initialization.
+      break;
+
+    case DLL_THREAD_DETACH:
+      // Do thread-specific cleanup.
+      break;
+
+    case DLL_PROCESS_DETACH:
+      // Perform any necessary cleanup.
+      break;
+    }
+    return TRUE;  // Successful DLL_PROCESS_ATTACH.
+}
+#else
 // called from shared-library constructor!
 static void __attribute__((constructor)) _openslide_init(void) {
   // activate threads
@@ -77,6 +125,7 @@ static void __attribute__((constructor)) _openslide_init(void) {
   _openslide_debug_init();
   openslide_was_dynamically_loaded = true;
 }
+#endif
 
 static void destroy_associated_image(gpointer data) {
   struct _openslide_associated_image *img = data;
@@ -614,20 +663,20 @@ void openslide_read_region(openslide_t *osr,
       // paint
       if (!read_region(osr, cr, sx, sy, level, sw, sh, &tmp_err)) {
         cairo_destroy(cr);
-        goto OUT;
+        goto Exit;
       }
 
       // done
       if (!_openslide_check_cairo_status(cr, &tmp_err)) {
         cairo_destroy(cr);
-        goto OUT;
+        goto Exit;
       }
 
       cairo_destroy(cr);
     }
   }
 
-OUT:
+Exit:
   if (tmp_err) {
     _openslide_propagate_error(osr, tmp_err);
     if (dest) {
