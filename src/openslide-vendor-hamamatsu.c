@@ -939,14 +939,14 @@ static gpointer restart_marker_thread_func(gpointer d) {
 						 NULL);
     if (data->restart_marker_thread_throttle &&
         time_to_sleep > 0) {
-#if GLIB_CHECK_VERSION(2,62,0)
+#if GLIB_CHECK_VERSION(2,32,0)
       gint64 abstime;
 #else
       GTimeVal abstime;
 #endif
       gulong sleep_time = G_USEC_PER_SEC * time_to_sleep;
 
-#if GLIB_CHECK_VERSION(2,62,0)
+#if GLIB_CHECK_VERSION(2,32,0)
       abstime = g_get_real_time();
       abstime += sleep_time;
 #else
