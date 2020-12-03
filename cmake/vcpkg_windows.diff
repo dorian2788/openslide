@@ -1,12 +1,11 @@
 tiff
-glib2
+glib
 cairo
 gdk-pixbuf
-jpeg
-openjpeg2
+openjpeg
 opencv
 sqlite3
-xml2
+libxml2
 zlib
 libpng
 --triplet
