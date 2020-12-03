@@ -14,6 +14,7 @@ jobs:
     name: ${{ matrix.cfg.os }}@${{ matrix.cfg.cxx }}-${{ matrix.cfg.cpp-version }}
 
     strategy:
+      fail-fast: false
       matrix:
         cfg:
           - {os: ubuntu-16.04, cc: gcc, cxx: g++, cpp-version: 4.8, generator: Ninja}
@@ -83,7 +84,7 @@ jobs:
 
         # Install the required Library
         sudo apt install -y libtiff-dev
-        sudo apt install -y glib2.0
+        sudo apt install -y libglib2.0-dev
         sudo apt install -y libcairo2-dev
         sudo apt install -y libgdk-pixbuf2.0-dev
         sudo apt install -y libopenjp2-7
