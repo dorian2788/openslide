@@ -1,0 +1,13 @@
+tiff
+glib2
+cairo
+gdk-pixbuf
+jpeg
+openjpeg2
+opencv
+sqlite3
+xml2
+zlib
+libpng
+--triplet
+x64-windows

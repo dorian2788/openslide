@@ -149,7 +149,7 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
     memcpy(&result, buf, sizeof(result));
 #ifdef _MSC_VER
     free(buf);
-#endif    
+#endif
     return result;
   }
   case 2: {
@@ -157,7 +157,7 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
     memcpy(&result, buf, sizeof(result));
 #ifdef _MSC_VER
     free(buf);
-#endif    
+#endif
     return result;
   }
   case 4: {
@@ -165,7 +165,7 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
     memcpy(&result, buf, sizeof(result));
 #ifdef _MSC_VER
     free(buf);
-#endif    
+#endif
     return result;
   }
   case 8: {
@@ -173,7 +173,7 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
     memcpy(&result, buf, sizeof(result));
 #ifdef _MSC_VER
     free(buf);
-#endif    
+#endif
     return result;
   }
   default:
@@ -535,7 +535,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
     // read in the value/offset
 #ifdef _MSC_VER
     uint8_t* value = (uint8_t*)calloc(bigtiff ? 8 : 4, sizeof(uint8_t));
-#else    
+#else
     uint8_t value[bigtiff ? 8 : 4];
 #endif
     if (fread(value, sizeof(value), 1, f) != 1) {
@@ -543,7 +543,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
                   "Cannot read value/offset");
 #ifdef _MSC_VER
       free(value);
-#endif            
+#endif
       goto FAIL;
     }
 
@@ -554,7 +554,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
       if (!set_item_values(item, value, err)) {
 #ifdef _MSC_VER
         free(value);
-#endif                
+#endif
         goto FAIL;
       }
 
@@ -565,7 +565,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
         fix_byte_order(&item->offset, sizeof(item->offset), 1, big_endian);
 #ifdef _MSC_VER
         free(value);
-#endif                
+#endif
       } else {
         uint32_t off32;
         memcpy(&off32, value, 4);
@@ -573,7 +573,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
         item->offset = off32;
 #ifdef _MSC_VER
         free(value);
-#endif                
+#endif
       }
 
       if (ndpi) {
@@ -676,7 +676,11 @@ struct _openslide_tifflike *_openslide_tifflike_create(const char *filename,
   tl->filename = g_strdup(filename);
   tl->big_endian = big_endian;
   tl->directories = g_ptr_array_new();
+#if GLIB_CHECK_VERSION(2,31,0)
+  g_mutex_init(tl->value_lock);
+#else
   tl->value_lock = g_mutex_new();
+#endif
 
   // initialize directory reading
   loop_detector = g_hash_table_new_full(_openslide_int64_hash,
@@ -777,7 +781,9 @@ void _openslide_tifflike_destroy(struct _openslide_tifflike *tl) {
   g_mutex_unlock(tl->value_lock);
   g_ptr_array_free(tl->directories, true);
   g_free(tl->filename);
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_free(tl->value_lock);
+#endif
   g_slice_free(struct _openslide_tifflike, tl);
 }
 

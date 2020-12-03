@@ -75,12 +75,16 @@ BOOL WINAPI DllMain (
     switch (reason)
     {
     case DLL_PROCESS_ATTACH:
+#if !GLIB_CHECK_VERSION(2,31,0)
       // activate threads
-      if (!g_thread_get_initialized()) {
+      if (!g_thread_supported()) {
         g_thread_init(NULL);
       }
+#endif
+#if !GLIB_CHECK_VERSION(2,35,0)
       // initialize GObject
       g_type_init();
+#endif
       // work around thread-safety problems in glib < 2.48.1 with first
       // g_key_file_new() call
       // https://bugzilla.gnome.org/show_bug.cgi?id=748474
@@ -109,12 +113,16 @@ BOOL WINAPI DllMain (
 #else
 // called from shared-library constructor!
 static void __attribute__((constructor)) _openslide_init(void) {
+#if !GLIB_CHECK_VERSION(2,31,0)
   // activate threads
-  if (!g_thread_get_initialized()) {
+  if (!g_thread_supported()) {
     g_thread_init(NULL);
   }
+#endif
+#if !GLIB_CHECK_VERSION(2,35,0)
   // initialize GObject
   g_type_init();
+#endif
   // work around thread-safety problems in glib < 2.48.1 with first
   // g_key_file_new() call
   // https://bugzilla.gnome.org/show_bug.cgi?id=748474

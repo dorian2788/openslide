@@ -643,7 +643,8 @@ struct _openslide_tiffcache *_openslide_tiffcache_create(const char *filename) {
   struct _openslide_tiffcache *tc = g_slice_new0(struct _openslide_tiffcache);
   tc->filename = g_strdup(filename);
   tc->cache = g_queue_new();
-  tc->lock = g_mutex_new();
+  g_mutex_init(tc->lock);
+  //tc->lock = g_mutex_new();
   return tc;
 }
 
@@ -701,7 +702,7 @@ void _openslide_tiffcache_destroy(struct _openslide_tiffcache *tc) {
   g_assert(tc->outstanding == 0);
   g_mutex_unlock(tc->lock);
   g_queue_free(tc->cache);
-  g_mutex_free(tc->lock);
+  //g_mutex_free(tc->lock);
   g_free(tc->filename);
   g_slice_free(struct _openslide_tiffcache, tc);
 }

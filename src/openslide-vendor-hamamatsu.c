@@ -789,11 +789,14 @@ static void jpeg_do_destroy(openslide_t *osr) {
     g_error_free(data->restart_marker_thread_error);
   }
   g_mutex_unlock(data->restart_marker_cond_mutex);
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_free(data->restart_marker_mutex);
+#endif
   g_timer_destroy(data->restart_marker_timer);
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_cond_free(data->restart_marker_cond);
   g_mutex_free(data->restart_marker_cond_mutex);
-
+#endif
   // the structure
   g_slice_free(struct hamamatsu_jpeg_ops_data, data);
 }
@@ -936,16 +939,31 @@ static gpointer restart_marker_thread_func(gpointer d) {
 						 NULL);
     if (data->restart_marker_thread_throttle &&
         time_to_sleep > 0) {
+#if GLIB_CHECK_VERSION(2,62,0)
+      gint64 abstime;
+#else
       GTimeVal abstime;
+#endif
       gulong sleep_time = G_USEC_PER_SEC * time_to_sleep;
 
+#if GLIB_CHECK_VERSION(2,62,0)
+      abstime = g_get_real_time();
+      abstime += sleep_time;
+#else
       g_get_current_time(&abstime);
       g_time_val_add(&abstime, sleep_time);
+#endif
 
       //      g_debug("zz: %lu", sleep_time);
+#if GLIB_CHECK_VERSION(2,32,0)
+      g_cond_wait_until(data->restart_marker_cond,
+      data->restart_marker_cond_mutex,
+      abstime);
+#else
       g_cond_timed_wait(data->restart_marker_cond,
 			data->restart_marker_cond_mutex,
 			&abstime);
+#endif
       //      g_debug("running again");
       g_mutex_unlock(data->restart_marker_cond_mutex);
       continue;
@@ -1331,16 +1349,28 @@ static bool init_jpeg_ops(openslide_t *osr,
 
   // init background thread for finding restart markers
   data->restart_marker_timer = g_timer_new();
+#if GLIB_CHECK_VERSION(2,31,0)
+  g_mutex_init(data->restart_marker_mutex);
+  g_cond_init(data->restart_marker_cond);
+  g_mutex_init(data->restart_marker_cond_mutex);
+#else
   data->restart_marker_mutex = g_mutex_new();
   data->restart_marker_cond = g_cond_new();
   data->restart_marker_cond_mutex = g_mutex_new();
+#endif
   data->restart_marker_thread_throttle =
     !_openslide_debug(OPENSLIDE_DEBUG_JPEG_MARKERS);
   if (background_thread) {
+#if GLIB_CHECK_VERSION(2,31,0)
+    data->restart_marker_thread = g_thread_new(NULL,
+                                               restart_marker_thread_func,
+                                               osr);
+#else
     data->restart_marker_thread = g_thread_create(restart_marker_thread_func,
                                                   osr,
                                                   TRUE,
                                                   NULL);
+#endif
   }
 
   // for debugging

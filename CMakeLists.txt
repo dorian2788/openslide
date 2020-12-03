@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.14.3)
+cmake_minimum_required (VERSION 3.10.2)
 
 option(BUILD_SHARED_LIBS "" ON)
 
@@ -134,8 +134,8 @@ else ()
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DCMAKE_BUILD -DG_DISABLE_SINGLE_INCLUDES")
 endif ()
 
-set(ADDITIONAL_CXX_FLAGS "-Wall -Wno-unused-result -Wno-unknown-pragmas -Wfatal-errors -Wno-deprecated-declarations -Wno-write-strings")
-set(ADDITIONAL_C_FLAGS "-Wall -Wno-unused-result -Wno-unknown-pragmas -Wfatal-errors -Wno-deprecated-declarations -Wno-write-strings")
+set(ADDITIONAL_CXX_FLAGS "-Wall -Wunused-result -Wunknown-pragmas -Wfatal-errors -Wdeprecated-declarations -Wwrite-strings")
+set(ADDITIONAL_C_FLAGS "-Wall -Wunused-result -Wunknown-pragmas -Wfatal-errors -Wdeprecated-declarations -Wwrite-strings")
 
 if(MSVC)
   set(ADDITIONAL_CXX_FLAGS "/wd4013 /wd4018 /wd4028 /wd4047 /wd4068 /wd4090 /wd4101 /wd4113 /wd4133 /wd4190 /wd4244 /wd4267 /wd4305 /wd4477 /wd4996 /wd4819 /fp:fast")

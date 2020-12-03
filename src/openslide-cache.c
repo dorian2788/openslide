@@ -138,7 +138,8 @@ struct _openslide_cache *_openslide_cache_create(int capacity_in_bytes) {
   struct _openslide_cache *cache = g_slice_new0(struct _openslide_cache);
 
   // init mutex
-  cache->mutex = g_mutex_new();
+  g_mutex_init (cache->mutex);
+  //cache->mutex = g_mutex_new();
 
   // init queue
   cache->list = g_queue_new();
@@ -165,7 +166,9 @@ void _openslide_cache_destroy(struct _openslide_cache *cache) {
   g_queue_free(cache->list);
 
   // free mutex
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_free(cache->mutex);
+#endif
 
   // destroy struct
   g_slice_free(struct _openslide_cache, cache);
