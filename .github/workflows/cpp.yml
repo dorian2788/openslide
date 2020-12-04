@@ -97,8 +97,9 @@ jobs:
         # Install OpenJPEG library from source since bionic distribution doesn't support it
         sudo apt install -y liblcms2-dev libz-dev
 
-        git clone https://github.com/uclouvain/openjpeg
+        git clone https://github.com/uclouvain/openjpeg --depth 1
         cd openjpeg
+        git fetch --unshallow
         mkdir build && cd build
         sudo cmake .. -DCMAKE_BUILD_TYPE=Release
         sudo make install
