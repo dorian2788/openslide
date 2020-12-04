@@ -76,7 +76,11 @@ struct _openslide_tifflike {
   bool big_endian;
   bool ndpi;
   GPtrArray *directories;
+#if !GLIB_CHECK_VERSION(2,31,0)
   GMutex *value_lock;
+#else
+  GMutex value_lock;
+#endif
 };
 
 struct tiff_directory {
@@ -228,27 +232,27 @@ static uint64_t fix_offset_ndpi(uint64_t diroff, uint64_t offset) {
   return result;
 }
 
-#define ALLOC_VALUES_OR_FAIL(OUT, TYPE, COUNT) do {			\
-    OUT = g_try_new(TYPE, COUNT);					\
-    if (!OUT) {								\
-      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,		\
-                  "Cannot allocate TIFF value array");			\
-      goto FAIL;							\
-    }									\
+#define ALLOC_VALUES_OR_FAIL(OUT, TYPE, COUNT) do {     \
+    OUT = g_try_new(TYPE, COUNT);         \
+    if (!OUT) {               \
+      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,   \
+                  "Cannot allocate TIFF value array");      \
+      goto FAIL;              \
+    }                 \
   } while (0)
 
-#define CONVERT_VALUES_EXTEND(TO, FROM_TYPE, FROM, COUNT) do {		\
-    const FROM_TYPE *from = (const FROM_TYPE *) FROM;			\
-    for (int64_t i = 0; i < COUNT; i++) {				\
-      TO[i] = from[i];							\
-    }									\
+#define CONVERT_VALUES_EXTEND(TO, FROM_TYPE, FROM, COUNT) do {    \
+    const FROM_TYPE *from = (const FROM_TYPE *) FROM;     \
+    for (int64_t i = 0; i < COUNT; i++) {       \
+      TO[i] = from[i];              \
+    }                 \
   } while (0)
 
-#define CONVERT_VALUES_RATIONAL(TO, FROM_TYPE, FROM, COUNT) do {	\
-    const FROM_TYPE *from = (const FROM_TYPE *) FROM;			\
-    for (int64_t i = 0; i < COUNT; i++) {				\
-      TO[i] = (double) from[i * 2] / (double) from[i * 2 + 1];		\
-    }									\
+#define CONVERT_VALUES_RATIONAL(TO, FROM_TYPE, FROM, COUNT) do {  \
+    const FROM_TYPE *from = (const FROM_TYPE *) FROM;     \
+    for (int64_t i = 0; i < COUNT; i++) {       \
+      TO[i] = (double) from[i * 2] / (double) from[i * 2 + 1];    \
+    }                 \
   } while (0)
 
 // value_lock must be held
@@ -375,9 +379,17 @@ static bool populate_item(struct _openslide_tifflike *tl,
   void *buf = NULL;
   bool success = false;
 
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_lock(tl->value_lock);
+#else
+  g_mutex_lock(&tl->value_lock);
+#endif
   if (item->offset == NO_OFFSET) {
+#if !GLIB_CHECK_VERSION(2,31,0)
     g_mutex_unlock(tl->value_lock);
+#else
+    g_mutex_unlock(&tl->value_lock);
+#endif
     return true;
   }
 
@@ -417,7 +429,11 @@ static bool populate_item(struct _openslide_tifflike *tl,
   success = true;
 
 FAIL:
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_unlock(tl->value_lock);
+#else
+  g_mutex_unlock(&tl->value_lock);
+#endif
   g_free(buf);
   if (f) {
     fclose(f);
@@ -676,10 +692,10 @@ struct _openslide_tifflike *_openslide_tifflike_create(const char *filename,
   tl->filename = g_strdup(filename);
   tl->big_endian = big_endian;
   tl->directories = g_ptr_array_new();
-#if GLIB_CHECK_VERSION(2,31,0)
-  g_mutex_init(tl->value_lock);
-#else
+#if !GLIB_CHECK_VERSION(2,31,0)
   tl->value_lock = g_mutex_new();
+#else
+  g_mutex_init(&tl->value_lock);
 #endif
 
   // initialize directory reading
@@ -774,11 +790,19 @@ void _openslide_tifflike_destroy(struct _openslide_tifflike *tl) {
   if (tl == NULL) {
     return;
   }
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_lock(tl->value_lock);
+#else
+  g_mutex_lock(&tl->value_lock);
+#endif
   for (uint32_t n = 0; n < tl->directories->len; n++) {
     tiff_directory_destroy(tl->directories->pdata[n]);
   }
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_unlock(tl->value_lock);
+#else
+  g_mutex_unlock(&tl->value_lock);
+#endif
   g_ptr_array_free(tl->directories, true);
   g_free(tl->filename);
 #if !GLIB_CHECK_VERSION(2,31,0)

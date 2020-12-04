@@ -43,7 +43,11 @@
 struct _openslide_tiffcache {
   char *filename;
   GQueue *cache;
+#if !GLIB_CHECK_VERSION(2,31,0)
   GMutex *lock;
+#else
+  GMutex lock;
+#endif
   int outstanding;
 };
 
@@ -643,17 +647,29 @@ struct _openslide_tiffcache *_openslide_tiffcache_create(const char *filename) {
   struct _openslide_tiffcache *tc = g_slice_new0(struct _openslide_tiffcache);
   tc->filename = g_strdup(filename);
   tc->cache = g_queue_new();
-  g_mutex_init(tc->lock);
-  //tc->lock = g_mutex_new();
+#if !GLIB_CHECK_VERSION(2,31,0)
+  tc->lock = g_mutex_new();
+#else
+  g_mutex_init(&tc->lock);
+#endif
   return tc;
 }
 
 TIFF *_openslide_tiffcache_get(struct _openslide_tiffcache *tc, GError **err) {
   //g_debug("get TIFF");
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_lock(tc->lock);
+#else
+  g_mutex_lock(&tc->lock);
+#endif
+
   tc->outstanding++;
   TIFF *tiff = g_queue_pop_head(tc->cache);
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_unlock(tc->lock);
+#else
+  g_mutex_unlock(&tc->lock);
+#endif
 
   if (tiff == NULL) {
     //g_debug("create TIFF");
@@ -662,9 +678,17 @@ TIFF *_openslide_tiffcache_get(struct _openslide_tiffcache *tc, GError **err) {
     tiff = tiff_open(tc, err);
   }
   if (tiff == NULL) {
+#if !GLIB_CHECK_VERSION(2,31,0)
     g_mutex_lock(tc->lock);
+#else
+    g_mutex_lock(&tc->lock);
+#endif
     tc->outstanding--;
+#if !GLIB_CHECK_VERSION(2,31,0)
     g_mutex_unlock(tc->lock);
+#else
+    g_mutex_unlock(&tc->lock);
+#endif
   }
   return tiff;
 }
@@ -675,14 +699,22 @@ void _openslide_tiffcache_put(struct _openslide_tiffcache *tc, TIFF *tiff) {
   }
 
   //g_debug("put TIFF");
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_lock(tc->lock);
+#else
+  g_mutex_lock(&tc->lock);
+#endif
   g_assert(tc->outstanding);
   tc->outstanding--;
   if (g_queue_get_length(tc->cache) < HANDLE_CACHE_MAX) {
     g_queue_push_head(tc->cache, tiff);
     tiff = NULL;
   }
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_unlock(tc->lock);
+#else
+  g_mutex_unlock(&tc->lock);
+#endif
 
   if (tiff) {
     //g_debug("too many TIFFs");
@@ -694,13 +726,21 @@ void _openslide_tiffcache_destroy(struct _openslide_tiffcache *tc) {
   if (tc == NULL) {
     return;
   }
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_lock(tc->lock);
+#else
+  g_mutex_lock(&tc->lock);
+#endif
   TIFF *tiff;
   while ((tiff = g_queue_pop_head(tc->cache)) != NULL) {
     TIFFClose(tiff);
   }
   g_assert(tc->outstanding == 0);
+#if !GLIB_CHECK_VERSION(2,31,0)
   g_mutex_unlock(tc->lock);
+#else
+  g_mutex_unlock(&tc->lock);
+#endif
   g_queue_free(tc->cache);
   //g_mutex_free(tc->lock);
   g_free(tc->filename);
