@@ -336,7 +336,7 @@ void _openslide_performance_warn_once(gint *warned_flag,
 
 /* Tables */
 // YCbCr -> RGB chroma contributions
-#ifdef CMAKE_BUILD
+#ifdef _MSC_VER
 const int16_t _openslide_R_Cr[256];
 const int32_t _openslide_G_Cb[256];
 const int32_t _openslide_G_Cr[256];
