@@ -336,17 +336,10 @@ void _openslide_performance_warn_once(gint *warned_flag,
 
 /* Tables */
 // YCbCr -> RGB chroma contributions
-#if defined _WIN32 || __APPLE__
-const int16_t _openslide_R_Cr[256];
-const int32_t _openslide_G_Cb[256];
-const int32_t _openslide_G_Cr[256];
-const int16_t _openslide_B_Cb[256];
-#else
 extern const int16_t _openslide_R_Cr[256];
 extern const int32_t _openslide_G_Cb[256];
 extern const int32_t _openslide_G_Cr[256];
 extern const int16_t _openslide_B_Cb[256];
-#endif
 
 // deprecated prefetch stuff (maybe we'll undeprecate it someday),
 // still needs these declarations for ABI compat

@@ -55,3 +55,4 @@ Makefile.in
 [Ll]ib
 [Bb]uild*/
 [Ss]hare/[Ii]nclude/openslide/*
+src/version.h
