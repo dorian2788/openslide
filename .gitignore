@@ -54,5 +54,6 @@ Makefile.in
 /share/openslide/*
 [Ll]ib
 [Bb]uild*/
+[Bb]in
 [Ss]hare/[Ii]nclude/openslide/*
 src/version.h

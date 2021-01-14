@@ -93,6 +93,8 @@ jobs:
         sudo apt install -y libxml2-dev
         sudo apt install -y zlib1g-dev
         sudo apt install -y libpng-dev
+        sudo apt install -y libwebp-dev
+        sudo apt install -y libzstd-dev
 
         # Install OpenJPEG library from source since bionic distribution doesn't support it
         sudo apt install -y liblcms2-dev libz-dev
