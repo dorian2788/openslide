@@ -126,6 +126,17 @@ include_directories(${GLIB_INCLUDE_DIR})
 link_directories(${GLIB_INCLUDE_DIR})
 list (APPEND linked_libs ${GLIB_LIBRARIES} ${GLIB_GOBJECT_LIBRARIES} ${GLIB_GIO_LIBRARIES} ${GLIB_GTHREAD_LIBRARIES})
 
+set(Pixman_FIND_VERSION ON)
+find_package( Pixman )
+
+if (PIXMAN_VERSION VERSION_GREATER "0.38.0" AND PIXMAN_VERSION VERSION_LESS "0.38.4")
+  message (WARNING "The detected PIXMAN version could lead to issues in the slide visualization "
+                   "(ref. https://github.com/openslide/openslide/issues/291#issuecomment-722935212). "
+                   "We sugges to provide a different PIXMAN version. "
+                   "For this issue the versions 0.34, 0.36 and 0.40 of libpixman are all good. "
+                   "Version 0.38 is the problematic one (0.38.0, 0.38.2, 0.38.4 are all affected). "
+                   "Newer versions seems to be all good.")
+endif ()
 
 if (MSVC)
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /DCMAKE_BUILD /DG_DISABLE_SINGLE_INCLUDES")
