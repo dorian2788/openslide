@@ -57,3 +57,11 @@ Makefile.in
 [Bb]in
 [Ss]hare/[Ii]nclude/openslide/*
 src/version.h
+
+
+*.egg-info
+*.cpython*
+__pycache__/
+[Dd]ata/
+python/source/*.cpp
+python/__version__.py

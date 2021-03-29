@@ -19,6 +19,7 @@ endif()
 
 option(CMAKE_VERBOSE_MAKEFILE "Create verbose makefile" OFF)
 option(ENABLE_VCPKG_INTEGRATION "Enable VCPKG integration" ON)
+option(PYTHON_WRAP "Enable Python wrap compilation" OFF)
 
 if(ENABLE_VCPKG_INTEGRATION AND DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
@@ -59,6 +60,7 @@ set(INSTALL_BIN_DIR      "${CMAKE_CURRENT_LIST_DIR}/bin"                      CA
 set(INSTALL_LIB_DIR      "${CMAKE_CURRENT_LIST_DIR}/lib"                      CACHE PATH "Path where lib will be installed")
 set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/share/include/openslide"  CACHE PATH "Path where headers will be installed")
 set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"          CACHE PATH "Path where cmake configs will be installed")
+set(PYC_DIR              "${CMAKE_SOURCE_DIR}/python"                         CACHE PATH "Path where find cython files") # cython directory
 
 set(CMAKE_DEBUG_POSTFIX d)
 
@@ -173,11 +175,7 @@ configure_file(
   "${CMAKE_CURRENT_LIST_DIR}/src/version.h.in"
   "${CMAKE_CURRENT_LIST_DIR}/src/version.h"
 )
-#set variables for compatibility with configure.ac
-set (prefix ${CMAKE_INSTALL_PREFIX})
-set (libdir ${CMAKE_INSTALL_PREFIX}/lib)
-set (includedir ${CMAKE_INSTALL_PREFIX}/include)
-set (VERSION ${Openslide_VERSION})
+
 configure_file(${CMAKE_SOURCE_DIR}/openslide.pc.in ${CMAKE_SOURCE_DIR}/openslide.pc @ONLY)
 message(STATUS "Pkg-config generated")
 
@@ -192,7 +190,18 @@ list(REMOVE_ITEM sources
   ${CMAKE_CURRENT_LIST_DIR}/src/make-tables.c
 )
 
-add_library(${openslidelib} ${sources} ${headers})
+if ( PYTHON_WRAP )
+
+  include( UseCython )
+  find_package (Python REQUIRED COMPONENTS Interpreter NumPy)
+  include_directories(${Python_NumPy_INCLUDE_DIRS})
+  add_definitions (-DNPY_NO_DEPRECATED_API)
+  add_subdirectory(${PYC_DIR}/source)
+
+endif ()
+
+
+add_library(${openslidelib} SHARED ${sources} ${headers})
 set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 #target_compile_definitions(${openslidelib} PRIVATE LIB_EXPORTS=1)
 target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${Openslide_INSTALL_INCLUDE_DIR}>)

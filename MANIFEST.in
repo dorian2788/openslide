@@ -1,0 +1,9 @@
+include *.txt
+include LICENSE.txt
+include CMakeLists.txt
+include *.toml
+include src/*
+include python/lib/*.pxd
+include python/lib/*.hpp
+include python/source/*.pyx
+include python/source/CMakeLists.txt
