@@ -146,7 +146,7 @@ static uint64_t read_uint(FILE *f, int32_t size, bool big_endian, bool *ok) {
     *ok = false;
     return 0;
   }
-  fix_byte_order(buf, sizeof(buf), 1, big_endian);
+  fix_byte_order(buf, size * sizeof(uint8_t), 1, big_endian);
   switch (size) {
   case 1: {
     uint8_t result;
@@ -550,11 +550,13 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
 
     // read in the value/offset
 #ifdef _MSC_VER
+    uint32_t _size = (bigtiff ? 8 : 4) * sizeof(uint8_t);
     uint8_t* value = (uint8_t*)calloc(bigtiff ? 8 : 4, sizeof(uint8_t));
 #else
+    uint32_t _size = (bigtiff ? 8 : 4) * sizeof(uint8_t);
     uint8_t value[bigtiff ? 8 : 4];
 #endif
-    if (fread(value, sizeof(value), 1, f) != 1) {
+    if (fread(value, _size, 1, f) != 1) {
       g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
                   "Cannot read value/offset");
 #ifdef _MSC_VER
@@ -564,7 +566,7 @@ static struct tiff_directory *read_directory(FILE *f, int64_t *diroff,
     }
 
     // does value/offset contain the value?
-    if (value_size * count <= sizeof(value)) {
+    if (value_size * count <= _size) {
       // yes
       fix_byte_order(value, value_size, count, big_endian);
       if (!set_item_values(item, value, err)) {
