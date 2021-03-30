@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.10.2)
 
-option(BUILD_SHARED_LIBS "" ON)
+set (BUILD_SHARED_LIBS "TRUE" CACHE BOOL "Create openslide as a shared library")
 
 set(Openslide_MAJOR_VERSION 3)
 set(Openslide_MINOR_VERSION 4)
@@ -56,11 +56,12 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Install prefix" FORCE)
 endif()
 
-set(INSTALL_BIN_DIR      "${CMAKE_CURRENT_LIST_DIR}/bin"                      CACHE PATH "Path where exe and dll will be installed")
-set(INSTALL_LIB_DIR      "${CMAKE_CURRENT_LIST_DIR}/lib"                      CACHE PATH "Path where lib will be installed")
+set(INSTALL_BIN_DIR      ${CMAKE_SOURCE_DIR}/bin                            CACHE PATH "Path where exe and dll will be installed")
+set(INSTALL_LIB_DIR      ${CMAKE_SOURCE_DIR}/lib                            CACHE PATH "Path where lib will be installed")
+set(PYC_DIR              ${CMAKE_SOURCE_DIR}/python                         CACHE PATH "Path where find cython files") # cython directory
+
 set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/share/include/openslide"  CACHE PATH "Path where headers will be installed")
 set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"          CACHE PATH "Path where cmake configs will be installed")
-set(PYC_DIR              "${CMAKE_SOURCE_DIR}/python"                         CACHE PATH "Path where find cython files") # cython directory
 
 set(CMAKE_DEBUG_POSTFIX d)
 
@@ -207,19 +208,16 @@ set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${Openslide_INSTALL_INCLUDE_DIR}>)
 target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
 #target_compile_definitions(${openslidelib} PRIVATE -DUSE_CMAKE_LIBS)
-
-if(BUILD_SHARED_LIBS)
-  target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
-endif()
+target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 
 set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${headers}")
 set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 
 install(TARGETS ${openslidelib} EXPORT OpenslideTargets
-  RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-  LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
-  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
-  PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}"
+  RUNTIME DESTINATION ${INSTALL_BIN_DIR}
+  LIBRARY DESTINATION ${INSTALL_LIB_DIR}
+  ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
+  PUBLIC_HEADER DESTINATION ${INSTALL_INCLUDE_DIR}
   COMPONENT dev
 )
 

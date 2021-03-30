@@ -60,7 +60,7 @@ class cmake_build_ext (build_ext):
     # example of cmake args
     config = 'Debug' if self.debug else 'Release'
     cmake_args = [
-        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:FILEPATH=' + str(extdir.parent.absolute()) + '/lib/',
+        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:FILEPATH=./lib/',
         '-DCMAKE_BUILD_TYPE:STRING=' + config,
         #'-DBUILD_DOCS:BOOL=OFF',
         #'-DBUILD_TEST:BOOL=OFF',
