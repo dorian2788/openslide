@@ -237,7 +237,11 @@ if (BUILD_DOCS)
 endif ()
 
 if ( BUILD_TEST )
-  add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+  if ( MSVC )
+    message(WARNING "Windows support for the testing is currently disabled. We are working on it!")
+  else ()
+    add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+  endif ()
 endif ()
 
 
