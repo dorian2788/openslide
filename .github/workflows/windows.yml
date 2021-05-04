@@ -51,7 +51,3 @@ jobs:
         cmakeBuildType: 'Release'
         buildWithCMakeArgs: '--config Release --target install'
 
-    - name: Testing
-      run: |
-        cd testing
-        ./run_test.ps1
