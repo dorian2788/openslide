@@ -20,7 +20,6 @@ Makefile.in
 /compile
 /config.guess
 /config.h
-/config.h.in
 /config.status
 /config.sub
 /config.log

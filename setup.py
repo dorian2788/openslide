@@ -60,11 +60,14 @@ class cmake_build_ext (build_ext):
     # example of cmake args
     config = 'Debug' if self.debug else 'Release'
     cmake_args = [
-        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:FILEPATH=./lib/',
+        '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:FILEPATH=' + str(extdir.parent.absolute()) + '/lib',
         '-DCMAKE_BUILD_TYPE:STRING=' + config,
         #'-DBUILD_DOCS:BOOL=OFF',
-        #'-DBUILD_TEST:BOOL=OFF',
+        '-DBUILD_TEST:BOOL=OFF',
         '-DPYTHON_WRAP:BOOL=ON',
+        '-DPython3_EXECUTABLE:FILEPATH={}'.format(sys.executable),
+        '-DPython3_INCLUDE_DIR:FILEPATH={}'.format(sysconfig.get_python_inc()),
+        '-DPython3_NumPy_INCLUDE_DIR:FILEPATH={}'.format(np.get_include()),
     ]
 
     if platform.system() == 'Windows':

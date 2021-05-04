@@ -1,10 +1,13 @@
-## Context
+# OpenSlide release process
 
-**Issue type** (bug report or feature request): 
-**Operating system** (e.g. Fedora 24, Mac OS 10.11, Windows 10): 
-**Platform** (e.g. 64-bit x86, 32-bit ARM): 
-**OpenSlide version**: 
-**Slide format** (e.g. SVS, NDPI, MRXS): 
-
-## Details
-
+- [ ] Check CI for build and test failures.  Check all mosaics.
+- [ ] Update `CHANGELOG.txt`, version in `configure.ac` and libtool `-version-info` in `Makefile.am`
+- [ ] Create and push signed tag
+- [ ] `git clean -dxf && autoreconf -i && ./configure && make distcheck`
+- [ ] Attach release notes to [GitHub release](https://github.com/openslide/openslide/releases/new) and upload tarballs
+- [ ] [Update openslide-winbuild](https://github.com/openslide/openslide-winbuild/issues/new?labels=release&template=release.md)
+- [ ] Update website: `_data/releases.yaml`, `_includes/news.md`, `api/`
+- [ ] Start a CI build of the demo site
+- [ ] Send mail to -announce and -users
+- [ ] Update Fedora and EPEL packages
+- [ ] Update MacPorts package

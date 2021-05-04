@@ -19,6 +19,7 @@
  *
  */
 
+#ifdef _WIN32
 #define _WIN32_WINNT 0x0600
 
 #include <stdio.h>
@@ -41,3 +42,12 @@ int wmain(int argc, wchar_t **argv) {
   }
   return 0;
 }
+
+#else
+
+int main ()
+{
+  return 0;
+}
+
+#endif

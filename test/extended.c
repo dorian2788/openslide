@@ -33,9 +33,7 @@
 #include <glib.h>
 #include <openslide.h>
 #include "openslide-common.h"
-#ifndef CMAKE_BUILD
-  #include "config.h"
-#endif
+#include "config.h"
 
 #define MAX_LEAK_FD 128
 
@@ -61,7 +59,7 @@ static gint leak_test_running;  /* atomic ops only */
 static gpointer cloexec_thread(const gpointer prog) {
   GHashTable *seen = g_hash_table_new_full(g_str_hash, g_str_equal,
         g_free, NULL);
-  gchar *argv[] = {prog, "--leak-check--", NULL};
+  gchar *argv[] = {prog, (char*)"--leak-check--", NULL};
 
   while (g_atomic_int_get(&leak_test_running)) {
     gchar *out;
@@ -110,7 +108,11 @@ static void check_cloexec_leaks(const char *slide, void *prog,
   }
 
   g_atomic_int_set(&leak_test_running, 1);
+#if !GLIB_CHECK_VERSION(2,31,0)
   GThread *thr = g_thread_create(cloexec_thread, prog, TRUE, NULL);
+#else
+  GThread *thr = g_thread_new(NULL, cloexec_thread, prog);
+#endif
   g_assert(thr != NULL);
   guint32 buf[512 * 512];
   GTimer *timer = g_timer_new();
@@ -134,9 +136,11 @@ static void check_cloexec_leaks(const char *slide G_GNUC_UNUSED,
 
 
 int main(int argc, char **argv) {
+#if !GLIB_CHECK_VERSION(2,31,0)
   if (!g_thread_supported()) {
     g_thread_init(NULL);
   }
+#endif
 
   common_fix_argv(&argc, &argv);
   if (argc != 2) {

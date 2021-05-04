@@ -46,7 +46,7 @@ static struct tile sentinel;
 
 static void *thread_func(void *data) {
   struct state *state = data;
-  struct tile *tile;	
+  struct tile *tile;
   uint32_t bufsz = TILE_SIZE * TILE_SIZE * sizeof(uint32_t);
   uint32_t *buf = g_slice_alloc(bufsz);
 
@@ -97,7 +97,11 @@ int main(int argc, char **argv) {
   state.jobs = g_async_queue_new();
   state.completions = g_async_queue_new();
   for (int i = 0; i < threads; i++) {
+#if !GLIB_CHECK_VERSION(2,31,0)
     if (g_thread_create(thread_func, &state, FALSE, NULL) == NULL) {
+#else
+    if (g_thread_new(NULL, thread_func, &state) == NULL) {
+#endif
       printf("Couldn't start thread\n");
       return 1;
     }

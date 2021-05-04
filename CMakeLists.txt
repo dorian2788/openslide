@@ -20,6 +20,7 @@ endif()
 option(CMAKE_VERBOSE_MAKEFILE "Create verbose makefile" OFF)
 option(ENABLE_VCPKG_INTEGRATION "Enable VCPKG integration" ON)
 option(PYTHON_WRAP "Enable Python wrap compilation" OFF)
+option(BUILD_TEST "Enable Testing compilation" OFF)
 
 if(ENABLE_VCPKG_INTEGRATION AND DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
@@ -182,6 +183,34 @@ message(STATUS "Pkg-config generated")
 
 set (openslidelib openslide)
 
+###########################################################################
+# Set configuration variables for compatibility with the master project
+include(CheckSymbolExists)
+include(CheckIncludeFile)
+
+# Check for macro SEEK_SET
+check_include_file("dlfcn.h" HAVE_DLFCN_H)
+check_include_file("fcntl.h" HAVE_FCNTL)
+check_include_file("stdio.h" HAVE_FSEEKO)
+check_include_file("inttypes.h" HAVE_INTTYPES_H)
+check_include_file("memory.h" HAVE_MEMORY_H)
+check_symbol_exists(proc_pidfdinfo, "libproc.h" HAVE_PROC_PIDFDINFO)
+check_include_file("stdint.h" HAVE_STDINT_H)
+check_include_file("stdlib.h" HAVE_STDLIB_H)
+check_include_file("strings.h" HAVE_STRINGS_H)
+check_include_file("sys/stat.h" HAVE_SYS_STAT_H)
+check_include_file("sys/types.h" HAVE_SYS_TYPES_H)
+check_include_file(uintptr_t "stdint.h" HAVE_UINTPTR_T)
+check_include_file("unistd.h" HAVE_UNISTD_H)
+pkg_check_modules(VALGRIND valgrind)
+set(HAVE_VALGRIND ${VALGRIND_FOUND})
+set(PACKAGE_BUGREPORT "openslide-users@lists.andrew.cmu.edu")
+check_symbol_exists(_wfopen, "stdio.h" HAVE__WFOPEN)
+
+configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/config.h @ONLY)
+
+###########################################################################
+
 #look for all *.h files in src folder
 file(GLOB headers "${CMAKE_CURRENT_LIST_DIR}/src/*.h")
 
@@ -194,11 +223,16 @@ list(REMOVE_ITEM sources
 if ( PYTHON_WRAP )
 
   include( UseCython )
-  find_package (Python REQUIRED COMPONENTS Interpreter NumPy)
-  include_directories(${Python_NumPy_INCLUDE_DIRS})
+  find_package (Python REQUIRED COMPONENTS Interpreter)
+  find_package(NumPy REQUIRED)
+  include_directories(${NumPy_INCLUDE_DIRS})
   add_definitions (-DNPY_NO_DEPRECATED_API)
   add_subdirectory(${PYC_DIR}/source)
 
+endif ()
+
+if ( BUILD_TEST )
+  add_subdirectory(${CMAKE_SOURCE_DIR}/test)
 endif ()
 
 
