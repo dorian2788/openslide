@@ -3,7 +3,6 @@ glib
 cairo
 gdk-pixbuf
 openjpeg
-opencv
 sqlite3
 libxml2
 zlib

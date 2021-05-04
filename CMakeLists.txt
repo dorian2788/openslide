@@ -21,6 +21,7 @@ option(CMAKE_VERBOSE_MAKEFILE "Create verbose makefile" OFF)
 option(ENABLE_VCPKG_INTEGRATION "Enable VCPKG integration" ON)
 option(PYTHON_WRAP "Enable Python wrap compilation" OFF)
 option(BUILD_TEST "Enable Testing compilation" OFF)
+option(BUILD_DOCS "Enable Documentaion builid support" OFF)
 
 if(ENABLE_VCPKG_INTEGRATION AND DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
@@ -229,6 +230,10 @@ if ( PYTHON_WRAP )
   add_definitions (-DNPY_NO_DEPRECATED_API)
   add_subdirectory(${PYC_DIR}/source)
 
+endif ()
+
+if (BUILD_DOCS)
+  add_subdirectory(${CMAKE_SOURCE_DIR}/doc/)
 endif ()
 
 if ( BUILD_TEST )

@@ -132,9 +132,5 @@ jobs:
         # python3 -m flake8 ./python --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Install openslide
-      env:
-        WORKSPACE: ${{ github.workspace }}/
-        VCPKG_ROOT: ${{ github.workspace }}/vcpkg/
-        VCPKG_DEFAULT_TRIPLET: x64-windows
       run: |
         python3 setup.py develop --user
