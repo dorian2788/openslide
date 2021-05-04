@@ -51,10 +51,10 @@ Makefile.in
 /doc/latex
 /doc/man
 /share/openslide/*
-[Ll]ib
+./[Ll]ib
 [Bb]uild*/
 [Bb]in
-[Ss]hare/[Ii]nclude/openslide/*
+[Ss]hare/
 src/version.h
 
 
