@@ -4,14 +4,15 @@
 |:--------------:|:------------:|:------------:|:-------------:|
 | [![Windows CI](https://github.com/Nico-Curti/openslide/actions/workflows/windows.yml/badge.svg)](https://github.com/Nico-Curti/openslide/actions/workflows/windows.yml) | [![MacOS CI](https://github.com/Nico-Curti/openslide/actions/workflows/macos.yml/badge.svg)](https://github.com/Nico-Curti/openslide/actions/workflows/macos.yml) | [![Linux CI](https://github.com/Nico-Curti/openslide/actions/workflows/linux.yml/badge.svg)](https://github.com/Nico-Curti/openslide/actions/workflows/linux.yml) | [![Python CI](https://github.com/Nico-Curti/openslide/actions/workflows/python.yml/badge.svg)](https://github.com/Nico-Curti/openslide/actions/workflows/python.yml) |
 
-C++ supported compilers:
+**C supported compilers:**
+
 ![gcc version](https://img.shields.io/badge/gcc-4.9.*|5.*|6.*|7.*|8.*|9.*|10.*-yellow.svg)
 
 ![clang version](https://img.shields.io/badge/clang-3.*|4.*|5.*|6.*|7.*|8.*|9.*|10.*-red.svg)
 
 ![msvc version](https://img.shields.io/badge/msvc-vs2017%20x86%20|%20vs2017%20x64|%20vs2019%20x86%20|%20vs2019%20x64-blue.svg)
 
-Python version supported :
+**Python version supported:**
 
 ![Python version](https://img.shields.io/badge/python-2.7|3.3|3.4|3.5|3.6|3.7|3.8|3.9-blue.svg)
 
@@ -166,6 +167,35 @@ There is also an older technical report:
  http://reports-archive.adm.cs.cmu.edu/anon/2008/CMU-CS-08-136.pdf
 ```
 
+**Cite**
+
+```BibTeX
+@article{10.4103/2153-3539.119005,
+   author = {Goode, Adam. and Gilbert, Benjamin. and Harkes, Jan. and Jukic, Drazen. and Satyanarayanan, Mahadev.},
+   title = {{OpenSlide: A vendor-neutral software foundation for digital pathology}},
+   journal = {Journal of Pathology Informatics},
+   volume = {4},
+   number = {1},
+   pages = {27},
+   doi = {10.4103/2153-3539.119005},
+   year = {2013},
+   abstract = {Although widely touted as a replacement for glass slides and microscopes in pathology, digital slides present major challenges in data storage, transmission, processing and interoperability. Since no universal data format is in widespread use for these images today, each vendor defines its own proprietary data formats, analysis tools, viewers and software libraries. This creates issues not only for pathologists, but also for interoperability. In this paper, we present the design and implementation of OpenSlide<i>,</i> a vendor-neutral C library for reading and manipulating digital slides of diverse vendor formats. The library is extensible and easily interfaced to various programming languages. An application written to the OpenSlide interface can transparently handle multiple vendor formats. OpenSlide is in use today by many academic and industrial organizations world-wide, including many research sites in the United States that are funded by the National Institutes of Health.},
+   URL = {https://www.jpathinformatics.org/article.asp?issn=2153-3539;year=2013;volume=4;issue=1;spage=27;epage=27;aulast=Goode;t=6},
+   eprint = {https://www.jpathinformatics.org/article.asp?issn=2153-3539;year=2013;volume=4;issue=1;spage=27;epage=27;aulast=Goode;t=6}
+   }
+```
+
+```BibTeX
+@article{TechnicalReport,
+   author = {Goode, Adam and Satyanarayanan, Mahadev},
+   year = {2007},
+   month = {11},
+   pages = {},
+   title = {A Vendor-Neutral Library and Viewer for Whole-Slide Images},
+   journal = {Computer Science Department, Carnegie Mellon University, Technical Report CMU-CS-08-136}
+   }
+```
+
 ## Acknowledgements
 
 OpenSlide has been supported by the National Institutes of Health and
@@ -191,7 +221,7 @@ If you are working on a machine without root privileges and you need to upgrade 
 
 ### Prerequisites
 
-The dependency of the C++ `openslide` package are:
+The dependency of the C `openslide` package are:
 
 * libtiff-dev
 * glib2.0
@@ -264,13 +294,16 @@ cd vcpkg
 
 > :warning: Pay attention to work with the latest version of vcpkg package!
 
-The only dependencies of the Python `histology` package are:
+The only dependencies of the Python `openslide` package are:
 
 * cython>=0.29
+* numpy>=1.15
 
 and you can easy install them with `python -m pip install -r requirements.txt`.
 
 ### Installation
+
+#### C library
 
 With a valid `CMake` version installed first of all clone the project as:
 
@@ -285,3 +318,47 @@ The you can build the `openslide` package with
 mkdir -p build
 cd build && cmake .. && cmake --build . --target install
 ```
+
+or more easily
+
+```bash
+./build.sh Release
+```
+
+if you are working on a Windows machine the correct script to call is the [`build.ps1`](https://Nico-Curti/openslide/blob/main/build.ps1) with the same command line arguments.
+
+**NOTE:** if you want enable the `Cython` support compile the library with `-DPYWRAP:BOOL=ON`.
+The `Cython` packages will be compiled and correctly positioned in the `openslide` Python package **BUT** you need to run also the setup before use it.
+An alternative is to install the `Python` package directly with the setup script: in this way the `CMake` is called inside the package building and all the dependencies automatically checked.
+
+**NOTE:** if you want enable the building of testing scripts you have to add the `-DBUILD_TEST:BOOL=ON` define to the CMake command line.
+
+#### Python package
+
+If you have already built the `openslide` `C` library the installation is performed faster and the `Cython` wrap was already built using the `-DPYWRAP` definition.
+Otherwise the full list of dependencies is build.
+
+In both cases the installation steps are
+
+```bash
+python -m pip install -r ./requirements.txt
+```
+
+to install the prerequisites and then
+
+```bash
+python setup.py install
+```
+
+or for installing in development mode:
+
+```bash
+python setup.py develop --user
+```
+
+> :warning: The current installation via pip has no requirements about the version of `setuptools` package.
+> If the already installed version of `setuptools` is `>= 50.*` you can find some troubles during the installation of our package (ref. [issue](https://github.com/Nico-Curti/rFBP/issues/5)).
+> We suggest to temporary downgrade the `setuptools` version to `49.3.0` to workaround this `setuptools` issue.
+
+**Note:** The requirements of the `openslide` library are mandatory also for the `Cython` installation!
+Make sure to have installed all the requirements before running the `setup.py` command.

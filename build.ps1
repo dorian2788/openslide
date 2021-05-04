@@ -1,6 +1,17 @@
 #!/usr/bin/env pwsh
 
-$number_of_build_workers=8
+# $args[0] = Release/Debug
+# $args[1] = other cmake defines
+
+[CmdletBinding()]
+Param
+(
+  [parameter(mandatory=$true, position=0)][string]$build_type,
+  [parameter(mandatory=$false, position=1, ValueFromRemainingArguments=$true)]$other_cmake_flags
+)
+
+# Disable parallel building to avoid possible "CMake error : Cannot restore timestamp"
+#$number_of_build_workers=(Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
 
 if (Get-Command "cl.exe" -ErrorAction SilentlyContinue) {
   $vstype = "Professional"
@@ -29,19 +40,33 @@ else {
   Write-Host "No Compiler found" -ForeGroundColor Red
 }
 
+Push-Location $PSScriptRoot
 
-# DEBUG
-Remove-Item .\build_win_debug -Force -Recurse -ErrorAction SilentlyContinue
-New-Item -Path .\build_win_debug -ItemType directory -Force
-Set-Location build_win_debug
-cmake -G "Visual Studio 16 2019" -T "host=x64" -A "x64" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET" "-DCMAKE_BUILD_TYPE=Debug" "-DPYRON=OFF" ..
-cmake --build . --config Debug --target install
-Set-Location ..
+If ( $build_type -eq "Debug" -or $build_type -eq "debug" )
+{
+  # DEBUG
+  #Remove-Item .\build_win_debug -Force -Recurse -ErrorAction SilentlyContinue
+  New-Item -Path .\build_win_debug -ItemType directory -Force
+  Set-Location build_win_debug
+  cmake -G "Visual Studio 16 2019" -T "host=x64" -A "x64" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET" "-DCMAKE_BUILD_TYPE=Debug" ${other_cmake_flags} ..
+  cmake --build . --config Debug --target install
+  Set-Location ..
+}
+ElseIf ( $build_type -eq "Release" -or $build_type -eq "release" )
+{
+  # RELEASE
+  #Remove-Item .\build_win_release -Force -Recurse -ErrorAction SilentlyContinue
+  New-Item -Path .\build_win_release -ItemType directory -Force
+  Set-Location build_win_release
+  cmake -G "Visual Studio 16 2019" -T "host=x64" -A "x64" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET" "-DCMAKE_BUILD_TYPE=Release" ${other_cmake_flags} ..
+  cmake --build . --config Release --target install
+  Set-Location ..
+}
+Else
+{
+  Write-Host "Unknown build type - Allowed only [Debug, Release]" -ForeGroundColor Red
+  exit 1
+}
 
-# RELEASE
-Remove-Item .\build_win_release -Force -Recurse -ErrorAction SilentlyContinue
-New-Item -Path .\build_win_release -ItemType directory -Force
-Set-Location build_win_release
-cmake -G "Visual Studio 16 2019" -T "host=x64" -A "x64" "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" "-DVCPKG_TARGET_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET" "-DCMAKE_BUILD_TYPE=Release" ..
-cmake --build . --config Release --parallel ${number_of_build_workers} --target install
-Set-Location ..
+
+Pop-Location

@@ -64,3 +64,4 @@ __pycache__/
 [Dd]ata/
 python/source/*.cpp
 python/__version__.py
+*.so
