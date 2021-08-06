@@ -65,3 +65,5 @@ __pycache__/
 python/source/*.cpp
 python/__version__.py
 *.so
+[Dd]oc/Doxyfile
+[Dd]oc/openslide.tag
