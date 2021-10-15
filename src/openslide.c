@@ -2,6 +2,7 @@
  *  OpenSlide, a library for reading whole slide image files
  *
  *  Copyright (c) 2007-2012 Carnegie Mellon University
+ *  Copyright (c) 2021      Benjamin Gilbert
  *  All rights reserved.
  *
  *  OpenSlide is free software: you can redistribute it and/or modify
@@ -266,33 +267,15 @@ bool openslide_can_open(const char *filename) {
   return success;
 }
 
-
-struct add_key_to_strv_data {
-  int i;
-  const char **strv;
-};
-
-static void add_key_to_strv(gpointer key,
-			    gpointer value G_GNUC_UNUSED,
-			    gpointer user_data) {
-  struct add_key_to_strv_data *d = user_data;
-
-  d->strv[d->i++] = key;
-}
-
 static int cmpstring(const void *p1, const void *p2) {
   return strcmp(* (char * const *) p1, * (char * const *) p2);
 }
 
 static const char **strv_from_hashtable_keys(GHashTable *h) {
-  int size = g_hash_table_size(h);
-  const char **result = g_new0(const char *, size + 1);
-
-  struct add_key_to_strv_data data = { 0, result };
-  g_hash_table_foreach(h, add_key_to_strv, &data);
+  guint size;
+  const char **result = (const char **) g_hash_table_get_keys_as_array(h, &size);
 
   qsort(result, size, sizeof(char *), cmpstring);
-
   return result;
 }
 
@@ -406,8 +389,7 @@ openslide_t *openslide_open(const char *filename) {
   osr->property_names = strv_from_hashtable_keys(osr->properties);
 
   // start cache
-  osr->cache = _openslide_cache_create(_OPENSLIDE_USEFUL_CACHE_SIZE);
-  //osr->cache = _openslide_cache_create(0);
+  osr->cache = _openslide_cache_binding_create();
 
   return osr;
 }
@@ -425,7 +407,7 @@ void openslide_close(openslide_t *osr) {
   g_free(osr->property_names);
 
   if (osr->cache) {
-    _openslide_cache_destroy(osr->cache);
+    _openslide_cache_binding_destroy(osr->cache);
   }
 
   g_free(g_atomic_pointer_get(&osr->error));
@@ -788,6 +770,21 @@ void openslide_read_associated_image(openslide_t *osr,
 
     g_free(buf);
   }
+}
+
+openslide_cache_t *openslide_cache_create(size_t capacity) {
+  return _openslide_cache_create(capacity);
+}
+
+void openslide_set_cache(openslide_t *osr, openslide_cache_t *cache) {
+  if (openslide_get_error(osr)) {
+    return;
+  }
+  _openslide_cache_binding_set(osr->cache, cache);
+}
+
+void openslide_cache_release(openslide_cache_t *cache) {
+  _openslide_cache_release(cache);
 }
 
 const char *openslide_get_version(void) {
