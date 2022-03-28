@@ -1,28 +1,27 @@
 # distutils: language = c++
 # cython: language_level=2
 
-from cython.operator cimport dereference as deref
-from libc.stdlib cimport malloc, free
+from libc.stdlib cimport malloc
+from libcpp.string cimport string
+cimport numpy as np
 
 import os
-cimport numpy as np
+import sys
 import numpy as np
-
-from openslide cimport openslide_open
-from openslide cimport openslide_close
-from openslide cimport openslide_detect_vendor # openslide_can_open is deprecated
-from openslide cimport openslide_get_level_count
-from openslide cimport openslide_get_level0_dimensions
-from openslide cimport openslide_get_level_dimensions
-from openslide cimport openslide_get_level_downsample
-from openslide cimport openslide_get_best_level_for_downsample
-from openslide cimport openslide_get_error
-from openslide cimport openslide_get_property_value
-
 
 __author__  = ['Nico Curti']
 __email__ = ['nico.curti2@unibo.it']
 
+if sys.byteorder == 'little':
+  CB = 0
+  CG = 1
+  CR = 2
+  CA = 3
+else:
+  CA = 0
+  CR = 1
+  CG = 2
+  CB = 3
 
 class OpenslideError (Exception):
   '''
@@ -38,6 +37,32 @@ class OpenslideError (Exception):
     super(OpenslideError, self).__init__(message)
 
     self.errors = errors
+
+
+cdef argb2rgba (unsigned char * buf, unsigned int len):
+  '''
+  Convert ARGB buffer to RGBA
+  '''
+  cdef unsigned int cur = 0
+  cdef unsigned char a, r, g, b;
+
+  for cur in range(0, len, 4):
+    a = buf[cur + CA]
+    r = buf[cur + CR]
+    g = buf[cur + CG]
+    b = buf[cur + CB]
+
+    if a != 0 and a != 255:
+      r = r * 255 / a
+      g = g * 255 / a
+      b = b * 255 / a
+
+    buf[cur + 0] = r
+    buf[cur + 1] = g
+    buf[cur + 2] = b
+    buf[cur + 3] = a
+
+  return
 
 
 cdef class Openslide:
@@ -71,13 +96,142 @@ cdef class Openslide:
   def __init__ (self, filename=None):
 
     self._level = 0
-    self._wsi = None
 
     if filename is not None:
 
       self.open(filename)
 
-  def __array__ (self):
+  def set_level (self, int level):
+    '''
+    Set the level for next processing
+
+    Parameters
+    ----------
+      level : int
+        The desired level.
+
+    Returns
+    -------
+      self
+
+    Notes
+    -----
+    .. note::
+      The default level is set to 0. This function
+      is usefull if you want to manage the WSI like any other
+      numpy array and perform array-slicing on different resolution
+      levels.
+    '''
+    self._level = level
+    return self
+
+  @property
+  def level (self):
+    '''
+    Get the resolution level used
+
+    Returns
+    -------
+      level : int
+        The level set with the set_level function (default=0)
+    '''
+    return self._level
+
+  @property
+  def shape (self) -> tuple:
+    '''
+    Get the dimensions of a level.
+
+    Returns
+    -------
+      w : int
+        Width of the level image
+
+      h : int
+        Height of the level image
+
+    Notes
+    -----
+    .. warning::
+      If some errors occurred or the level was out of range,
+      the width and height are set to -1 and a OpenslideError
+      is raised.
+    '''
+    cdef long int [1] w
+    cdef long int [1] h
+
+    openslide_get_level_dimensions(self.thisptr, self._level, w, h)
+
+    if (w[0] < 0 or h[0] < 0):
+      raise OpenslideError('Incorrect level found. '
+                           'The maximum number of levels is {:d}. '
+                           'Given {:d}'.format(self.get_level_count, self._level))
+
+    return (w[0], h[0])
+
+  def get_associated_image_dimensions (self, string name):
+    '''
+    Get the dimensions of the associated image.
+
+    Returns
+    -------
+      w : int
+        Width of the level image
+
+      h : int
+        Height of the level image
+
+    Notes
+    -----
+    .. warning::
+      If some errors occurred or the level was out of range,
+      the width and height are set to -1 and a OpenslideError
+      is raised.
+    '''
+    cdef long int [1] w
+    cdef long int [1] h
+
+    openslide_get_associated_image_dimensions(self.thisptr, name.c_str(), w, h)
+
+    if (w[0] < 0 or h[0] < 0):
+      raise OpenslideError('Incorrect image found. '
+                           'Given {:}'.format(name.decode('utf-8')))
+
+    return (w[0], h[0])
+
+  def get_downsample (self) -> float:
+    '''
+    Get the downsampling factor of the current level.
+
+    Returns
+    -------
+      downsampling : float
+        The downsampling factor for the current level, or -1.0 if an error occurred
+        or the level was out of range.
+    '''
+
+    downsample = openslide_get_level_downsample(self.thisptr, self._level)
+
+    if (downsample < 0):
+      raise OpenslideError('Incorrect level found. '
+                           'The maximum number of levels is {:d}. '
+                           'Given {:d}'.format(self.get_level_count, self._level))
+
+    return downsample
+
+  @property
+  def get_level_count (self) -> int:
+    '''
+    Get the number of levels in the whole slide image.
+
+    Returns
+    -------
+      levels : int
+        The number of levels, or -1 if an error occurred.
+    '''
+    return openslide_get_level_count(self.thisptr)
+
+  def __array__ (self) -> np.ndarray:
     '''
     Compatibility with numpy array.
     In this way np.array(Openslide_obj) is a valid 3D array and you can
@@ -95,10 +249,33 @@ cdef class Openslide:
       set_level() member function with the desired level
     '''
 
-    w, h = self.get_level_dimensions(self._level)
+    w, h = self.shape
     x, y = (0, 0)
 
-    return self.read_region(self._level, x, y, w, h)[..., [2, 1, 0]]
+    return self.read_region(self._level, x, y, w, h)
+
+  def __getitem__(self, item) -> np.ndarray:
+    '''
+    Compatibility with numpy array.
+    Make the object subscriptable in the same way of standard NumPy array.
+
+    Parameters
+    ----------
+      item : list or int or iterable
+        Subscribe key
+
+    Returns
+    -------
+      dst : array-like
+        Subscripted array
+
+    Notes
+    -----
+    This magic function is particularly useful for the color conversion:
+    OpenCV image are stored in BGR fmt and to move to the common RGB color
+    space can be used the syntax [..., ::-1]
+    '''
+    return self.__array__().__getitem__(item)
 
   def _get_error (self):
     '''
@@ -127,16 +304,16 @@ cdef class Openslide:
 
     return self
 
-  def _get_property (self, name):
+  def _get_property (self, string name) -> str:
     '''
     Wrap for the properties getter
     '''
 
-    cdef const char * value = openslide_get_property_value(self.thisptr, name)
+    cdef const char * value = openslide_get_property_value(self.thisptr, name.c_str())
     return value.decode('utf-8') if value is not NULL else None
 
   @property
-  def header (self):
+  def header (self) -> dict:
     '''
     Get the properties of the WSI image as dict.
 
@@ -172,159 +349,7 @@ cdef class Openslide:
 
     return properties
 
-  def set_level (self, int level):
-    '''
-    Set the level for next processing
-
-    Parameters
-    ----------
-      level : int
-        The desired level.
-
-    Returns
-    -------
-      self
-
-    Notes
-    -----
-    .. note::
-      The default level is set to 0. This function
-      is usefull if you want to manage the WSI like any other
-      numpy array and perform array-slicing on different resolution
-      levels.
-    '''
-    self._level = level
-    return self
-
-  @property
-  def level (self):
-    '''
-    Get the current set level
-
-    Returns
-    -------
-      level : int
-        The level set with the set_level function (default=0)
-    '''
-    return self._level
-
-  @property
-  def wsi (self):
-    '''
-    Get (or load) the current WSI.
-
-    Returns
-    -------
-      wsi : array-like
-        The WSI loaded at the current level
-
-    Notes
-    -----
-    .. note::
-      Use the set_level function to change the image level.
-    '''
-
-    if self._wsi is None:
-      w, h = self.get_level_dimensions(self._level)
-      self.read_region(self._level, 0, 0, w, h)
-
-    return self._wsi
-
-  @property
-  def get_level_count (self):
-    '''
-    Get the number of levels in the whole slide image.
-
-    Returns
-    -------
-      levels : int
-        The number of levels, or -1 if an error occurred.
-    '''
-    return openslide_get_level_count(self.thisptr)
-
-  def get_level_dimensions (self, int level):
-    '''
-    Get the dimensions of a level.
-
-    Parameters
-    ----------
-      level : int
-        The desired level.
-
-    Returns
-    -------
-      w : int
-        Width of the level image
-
-      h : int
-        Height of the level image
-
-    Notes
-    -----
-    .. warning::
-      If some errors occurred or the level was out of range,
-      the width and height are set to -1 and a OpenslideError
-      is raised.
-    '''
-    cdef long int [1] w
-    cdef long int [1] h
-
-    openslide_get_level_dimensions(self.thisptr, level, w, h)
-
-    if (w[0] < 0 or h[0] < 0):
-      raise OpenslideError('Incorrect level found. '
-                           'The maximum number of levels is {:d}. '
-                           'Given {:d}'.format(self.get_level_count, level))
-
-    return (w[0], h[0])
-
-  @property
-  def shape (self):
-    '''
-    Get the dimensions of the current level
-
-    Returns
-    -------
-      w : int
-        Width of the level image
-
-      h : int
-        Height of the level image
-
-    Notes
-    -----
-    .. note::
-      The default level is set to 0. If you want to change the
-      level under analysis you can use the set_level() member function.
-    '''
-    return self.get_level_dimensions(self._level)
-
-  def get_level_downsample (self, int level):
-    '''
-    Get the downsampling factor of a given level.
-
-    Parameters
-    ----------
-      level : int
-        The desired level.
-
-    Returns
-    -------
-      downsampling : float
-        The downsampling factor for this level, or -1.0 if an error occurred
-        or the level was out of range.
-    '''
-
-    downsample = openslide_get_level_downsample(self.thisptr, level)
-
-    if (downsample < 0):
-      raise OpenslideError('Incorrect level found. '
-                           'The maximum number of levels is {:d}. '
-                           'Given {:d}'.format(self.get_level_count, level))
-
-    return downsample
-
-  def get_best_level_for_downsample (self, float downsample):
+  def get_best_level_for_downsample (self, float downsample) -> int:
     '''
     Get the best level to use for displaying the given downsample.
 
@@ -347,7 +372,7 @@ cdef class Openslide:
     return level
 
 
-  def read_region (self, int level, long int x, long int y, long int w, long int h):
+  def read_region (self, int level, long int x, long int y, long int w, long int h) -> np.ndarray:
     '''
     Copy pre-multiplied ARGB data from a whole slide image.
 
@@ -384,7 +409,7 @@ cdef class Openslide:
     .. warning::
       If an error occurs or has occurred an OpenslideError is raised
     '''
-    cdef unsigned int * dest = <unsigned int *> malloc(w * h * 3 * sizeof(unsigned int))
+    cdef unsigned int * dest = <unsigned int *> malloc(w * h * sizeof(unsigned int))
 
     openslide_read_region(self.thisptr, dest, x, y, level, w, h)
 
@@ -393,46 +418,69 @@ cdef class Openslide:
                            'The level image has shape: ({:d}, {:d}). '
                            'The request shape is: ({:d}, {:d})'.format(*self.get_level_dimensions(level), w - x, h - y))
 
-    self._wsi = np.asarray(<np.uint32_t[: h*w*3]> dest).reshape(h, w, 3)
-    return self._wsi
+    cdef unsigned char * u8 = <unsigned char*>dest;
+    argb2rgba(u8, w * h * 4)
 
-  def __getitem__ (self, key):
+    wsi = np.asarray(<np.uint32_t[: h * w]> dest)
+
+    # convert to a readable image
+    wsi = wsi.view(dtype=np.uint8).reshape(h, w, 4)
+
+    return wsi
+
+
+  def read_associated_image (self, name):
     '''
-    Slice the WSI using the level set with
-    the set_level() function (or use the default level set
-    to 0)
+    Copy pre-multiplied ARGB data from an associated image.
+
+    This function reads and decompresses the required associated
+    image.
 
     Parameters
     ----------
-      key : int or tuple or slices
-        The range of values (or single value) to read from the image
+      name : str
+        The name of the desired associated image.
 
     Returns
     -------
-      slice : array-like
-        The portion of the image selected
+      arr : numpy-array
+        The destination buffer for the ARGB data.
+
+    Notes
+    -----
+    .. note::
+      The destination buffer stores the value as unsigned int32 values.
+
+    .. warning::
+      If an error occurs or has occurred an OpenslideError is raised
     '''
+    w, h = self.get_associated_image_dimensions(name.encode('utf-8'))
 
-    if self._wsi is None:
-      w, h = self.get_level_dimensions(self._level)
-      self.read_region(self._level, 0, 0, w, h)
+    cdef unsigned int * dest = <unsigned int *> malloc(w * h * sizeof(unsigned int))
 
-    try:
+    openslide_read_associated_image(self.thisptr, name.encode('utf-8'), dest)
 
-      return self._wsi[key]
+    if dest is NULL:
+      raise OpenslideError('Incorrect associated image read. '
+                           'The request image is: {}'.format(name))
 
-    except IndexError:
+    cdef unsigned char * u8 = <unsigned char*>dest;
+    argb2rgba(u8, w * h * 4)
 
-      raise OpenslideError('Slicing error. '
-                           'Only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) '
-                           'and integer or boolean arrays are valid indices')
+    img = np.asarray(<np.uint32_t[: h * w]> dest)
+
+    # convert to a readable image
+    img = img.view(dtype=np.uint8).reshape(h, w, 4)
+
+    return img
+
 
   def __enter__ (self):
     '''
     Context manager for file reading
     '''
 
-    return self # return WSILevel che non fa altro che prendere
+    return self
 
   def __exit__ (self, type, value, traceback):
     '''
@@ -446,7 +494,7 @@ cdef class Openslide:
     '''
     openslide_close(self.thisptr)
 
-  def _openslide_can_open (self, filename_bytes):
+  def _openslide_can_open (self, filename_bytes) -> bool:
     '''
     Quickly determine whether a whole slide image is recognized.
 
@@ -538,3 +586,9 @@ cdef class Openslide:
     '''
     openslide_close(self.thisptr)
 
+  def __repr__ (self) -> str:
+    '''
+    Object representation
+    '''
+    class_name = self.__class__.__qualname__
+    return '{0}(level={1})'.format(class_name, self.level)

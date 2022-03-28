@@ -60,6 +60,7 @@ static const struct _openslide_format *formats[] = {
   &_openslide_format_philips,
   &_openslide_format_ventana,
   &_openslide_format_generic_tiff,
+  &_openslide_format_olympus,
   NULL,
 };
 
@@ -182,7 +183,6 @@ static const struct _openslide_format *detect_format(const char *filename,
 
     g_assert(format->name && format->vendor &&
              format->detect && format->open);
-
     if (format->detect(filename, tl, &tmp_err)) {
       // success!
       if (tl_OUT) {

@@ -709,6 +709,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
   struct level **levels = NULL;
   uint32_t *tilexmax = NULL;
   uint32_t *tileymax = NULL;
+  int32_t level_count = 1;
 
   // open file
   FILE *f = _openslide_fopen(filename, "rb", err);
@@ -737,7 +738,6 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
     _openslide_io_error(err, "Couldn't seek to JPEG start");
     goto FAIL;
   }
-  int32_t level_count = 1;
 
   // computes tiles dims
   tiles = g_new0(struct tile, sh->ntiles);

@@ -9,6 +9,8 @@ set(Openslide_TWEAK_VERSION 0)
 
 set(Openslide_VERSION ${Openslide_MAJOR_VERSION}.${Openslide_MINOR_VERSION}.${Openslide_PATCH_VERSION}.${Openslide_TWEAK_VERSION})
 
+set (CMAKE_PROJECT_HOMEPAGE_URL "https://github.com/Nico-Curti/openslide")
+
 if (MSVC)
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /DOpenslide_VERSION=\"${Openslide_VERSION}\"")
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} /DOpenslide_VERSION=\"${Openslide_VERSION}\"")

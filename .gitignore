@@ -67,3 +67,5 @@ python/__version__.py
 *.so
 [Dd]oc/Doxyfile
 [Dd]oc/openslide.tag
+setup_.py
+setup.cfg
