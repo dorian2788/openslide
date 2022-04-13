@@ -188,7 +188,7 @@ with Openslide(filename, dtype=FLUORESCENCE) as osr:
     ax.imshow(img)
 ```
 
-![fluorescence](https://drive.google.com/file/d/1Yrt95E6rPn6-tUuYduSAWkVP3FYgybf8/view?usp=sharing)
+![fluorescence](https://drive.google.com/uc?export=view&id=1Yrt95E6rPn6-tUuYduSAWkVP3FYgybf8)
 
 **NOTE:** The resolution level size could not be an exact multiple of the tile size, so when we read the image via `openslide` it tries to pad it in the best way.
 This step produces a darker border around the image which should be excluded when we consider overall statistics of the image (eg. the global minimum).
