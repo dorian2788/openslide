@@ -1,7 +1,8 @@
 /*
  *  OpenSlide, a library for reading whole slide image files
  *
- *  Copyright (c) 2021 Nico Curti
+ *  Copyright (c) 2007-2013 Carnegie Mellon University
+ *  Copyright (c) 2011 Google, Inc.
  *  All rights reserved.
  *
  *  OpenSlide is free software: you can redistribute it and/or modify
@@ -35,6 +36,7 @@
 #include "openslide-decode-jpeg.h"
 #include "openslide-decode-jp2k.h"
 #include "openslide-decode-png.h"
+#include "openslide-decode-xml.h"
 #include "openslide-decode-tiff.h"
 #include "openslide-decode-tifflike.h"
 #include "openslide-decode-gdkpixbuf.h"
@@ -52,10 +54,28 @@ static const char ETS_EXT[] = ".ets";
 static const char TIF_EXT[] = ".tif";
 static const char VSI_EXT[] = ".vsi";
 static const char SLIDEDATA_DIRNAME[] = "_%s_";
-static const char ETSDATA_FILENAME[] = "frame_t.ets";
-static const char TIFDATA_FILENAME[] = "frame_t.tif";
 static const char SIS_MAGIC[4] = "SIS";
 static const char ETS_MAGIC[4] = "ETS";
+
+#define PARSE_INT_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)    \
+  do {                \
+    GError *tmp_err = NULL;         \
+    OUT = _openslide_xml_parse_int_attr(NODE, NAME, &tmp_err);  \
+    if (tmp_err)  {           \
+      g_propagate_error(err, tmp_err);        \
+      goto FAIL;            \
+    }               \
+  } while (0)
+
+#define PARSE_DBL_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)    \
+  do {                \
+    GError *tmp_err = NULL;         \
+    OUT = _openslide_xml_parse_double_attr(NODE, NAME, &tmp_err);  \
+    if (tmp_err)  {           \
+      g_propagate_error(err, tmp_err);        \
+      goto FAIL;            \
+    }               \
+  } while (0)
 
 enum image_format {
   FORMAT_RAW,           // 0
@@ -68,6 +88,31 @@ enum image_format {
   FORMAT_UNKNOWN4,      // 7
   FORMAT_PNG,           // 8
   FORMAT_BMP,           // 9
+};
+
+enum pixel_types {
+  PIXEL_TYPE_UNKNOWN,       // 0
+  PIXEL_TYPE_UNKNOWN2,      // 1
+  PIXEL_TYPE_UINT8,         // 2
+  PIXEL_TYPE_UNKNOWN3,      // 3
+  PIXEL_TYPE_INT32,         // 4
+};
+
+enum color_space_types {
+  COLORSPACE_UNKNOWN,       // 0
+  COLORSPACE_FLUORESCENCE,  // 1
+  COLORSPACE_UNKNOWN2,      // 2
+  COLORSPACE_UNKNOWN3,      // 3
+  COLORSPACE_BRIGHTFIELD,   // 4
+  COLORSPACE_UNKNOWN4,      // 5
+  COLORSPACE_UNKNOWN5,      // 6
+};
+
+enum channel_types {
+  CHANNEL_UNKNOWN,          // 0
+  CHANNEL_GRAYSCALE,        // 1
+  CHANNEL_UNKNOWN2,         // 2
+  CHANNEL_RGB,              // 3
 };
 
 struct sis_header {
@@ -98,6 +143,8 @@ struct ets_header {
   uint32_t dimx;
   uint32_t dimy;
   uint32_t dimz;
+  uint8_t backgroundColor[3];
+  bool usePyramid;
 };
 
 struct tile {
@@ -118,7 +165,7 @@ struct load_state {
 
 struct level {
   struct _openslide_level base;
-  struct _openslide_tiff_level tiffl;
+  struct _openslide_tiff_level *tiffl;
   struct _openslide_grid *grid;
 
   enum image_format image_format;
@@ -127,11 +174,12 @@ struct level {
 
   double tile_w;
   double tile_h;
+  int32_t tile_ch;
 
   uint32_t current_lvl;
 };
 
-struct generic_tiff_ops_data {
+struct ome_tiff_ops_data {
   struct _openslide_tiffcache *tc;
 };
 
@@ -145,6 +193,41 @@ enum slide_format {
   SLIDE_FMT_ETS,
   SLIDE_FMT_TIF
 };
+
+
+// TIFF obj
+
+struct lightsource {
+  char *manufacturer;
+  char *model;
+};
+
+struct channel {
+  char *name;
+  int32_t emission_wavelength;
+  int32_t color;
+};
+
+struct image {
+  char *creation_date;
+  int32_t sizeX;
+  int32_t sizeY;
+  double mpp_x;
+  double mpp_y;
+  struct channel *ch;
+  double *exposuretime;
+};
+
+struct tiff_image_desc {
+  char *mycroscope_manufacturer;
+  char *mycroscope_model;
+  int32_t channels;
+  int32_t levels;
+  struct lightsource *lightsources;
+  struct image *img;
+};
+
+
 
 static enum slide_format _get_related_image_file(const char *filename, char **image_filename,
                                     GError **err) {
@@ -170,38 +253,75 @@ static enum slide_format _get_related_image_file(const char *filename, char **im
   dir = g_dir_open(slidedat_path, 0, err);
   while ((slide_dir = g_dir_read_name(dir))) {
 
-    // the stack1 directory stores always putative label images
-    if (strncmp(slide_dir, "stack1", 6))
+    // check directory name
+    if (strncmp(slide_dir, "stack1", 6) < 0)
       continue;
 
-    //char *etsdat_file = g_strdup_printf(ETSDATA_FILENAME, 0);
-    //char *tifdat_file = g_strdup_printf(TIFDATA_FILENAME, 0);
+    // DEBUG OPTIONS
+    /***********************************************************************/
+    //if (strncmp(slide_dir, "stack1", 6) == 0 && strlen(slide_dir) == 6)
+    //  continue;
+    //if (strncmp(slide_dir, "stack10000", 10) == 0)
+    //  continue;
+    //if (strncmp(slide_dir, "stack10002", 10) == 0)
+    //  continue;
+    /***********************************************************************/
+
+    printf("VSI stack used: %s\n", slide_dir);
 
     char *data_dir = g_build_filename(slidedat_path, slide_dir, NULL);
+    char *current_file = NULL;
 
-    char *etsdat_path = g_build_filename(data_dir, ETSDATA_FILENAME, NULL);
-    char *tifdat_path = g_build_filename(data_dir, TIFDATA_FILENAME, NULL);
+    GDir *nested_dir;
+    const gchar *ets_or_tif_file;
 
-    bool ok_ets = g_file_test(etsdat_path, G_FILE_TEST_EXISTS);
-    bool ok_tif = g_file_test(tifdat_path, G_FILE_TEST_EXISTS);
+    nested_dir = g_dir_open(data_dir, 0, err);
+    while ((ets_or_tif_file = g_dir_read_name(nested_dir))) {
 
-    g_free(data_dir);
+      // check file starts with 'frame_t' chars
+      if (strncmp(ets_or_tif_file, "frame_t", 7) >= 0) {
 
-    if (ok_ets) {
-      *image_filename = etsdat_path;
-      etsdat_path = NULL;
-      g_free(slidedat_path);
-      return SLIDE_FMT_ETS;
-    } else if (ok_tif) {
-      *image_filename = tifdat_path;
-      tifdat_path = NULL;
-      g_free(slidedat_path);
-      return SLIDE_FMT_TIF;
-    } else {
+        current_file = g_build_filename(data_dir, ets_or_tif_file, NULL);
+
+        bool is_valid = g_file_test(current_file, G_FILE_TEST_EXISTS);
+
+        if (is_valid)
+          goto DONE;
+      }
+
+      // If there is more than 1 file or something goes wrong -> FAILED
+
       g_free(slidedat_path);
       g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
                   "Impossible to find related image file");
       return SLIDE_FMT_UNKNOWN;
+    }
+
+
+DONE:
+
+    if (g_str_has_suffix(current_file, ETS_EXT)) {
+
+      *image_filename = current_file;
+      g_free(data_dir);
+      g_free(slidedat_path);
+      return SLIDE_FMT_ETS;
+
+    } else if (g_str_has_suffix(current_file, TIF_EXT)) {
+
+      *image_filename = current_file;
+      g_free(data_dir);
+      g_free(slidedat_path);
+      return SLIDE_FMT_TIF;
+
+    } else {
+
+      g_free(slidedat_path);
+      g_free(data_dir);
+      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+                  "Impossible to find related image file");
+      return SLIDE_FMT_UNKNOWN;
+
     }
   }
 
@@ -262,6 +382,32 @@ static bool olympus_tif_detect(const char *filename,
   if (!g_file_test(filename, G_FILE_TEST_EXISTS)) {
     g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
                 "File does not exist");
+    return false;
+  }
+
+  // check xml properties
+
+  // get image description
+  const char *image_desc = _openslide_tifflike_get_buffer(tl, 0,
+                                                          TIFFTAG_IMAGEDESCRIPTION,
+                                                          err);
+  if (!image_desc) {
+    return false;
+  }
+
+  // try to parse the xml
+  xmlDoc *doc = _openslide_xml_parse(image_desc, err);
+  if (doc == NULL) {
+    return false;
+  }
+
+  // create XPATH context to query the document
+  xmlXPathContext *ctx = NULL;
+  ctx = _openslide_xml_xpath_create(doc);
+
+  // get number of planes
+  char *username = _openslide_xml_xpath_get_string(ctx, "/d:OME/d:Experimenter/@UserName");
+  if (strcmp(username, "olympus")){
     return false;
   }
 
@@ -337,7 +483,7 @@ static bool olympus_vsi_detect(const char *filename G_GNUC_UNUSED,
 static bool sis_header_read(struct sis_header * self, FILE * stream, GError **err) {
   int __attribute__((unused)) check = 0;
   check = fread(self->magic, 1, sizeof(self->magic), stream);
-  g_assert((strncmp( self->magic, SIS_MAGIC, 4 ) == 0));
+  g_assert((strncmp(self->magic, SIS_MAGIC, 4) == 0));
   check = fread((char*)&self->headerSize, 1, sizeof(self->headerSize), stream);
   g_assert((self->headerSize == 64)); // size of struct
   check = fread((char*)&self->version, 1, sizeof(self->version), stream);
@@ -369,25 +515,62 @@ static bool sis_header_read(struct sis_header * self, FILE * stream, GError **er
 static bool ets_header_read(struct ets_header * self, FILE * stream, GError **err) {
   int __attribute__((unused)) check = 0;
   check = fread(self->magic, 1, sizeof(self->magic), stream);
-  g_assert((strncmp( self->magic, ETS_MAGIC, 4 ) == 0));
+  g_assert((strncmp(self->magic, ETS_MAGIC, 4) == 0));
   check = fread((char*)&self->version, 1, sizeof(self->version), stream);
   //g_assert((self->version == 0x30001 || self->version == 0x30003)); // some kind of version ?
   check = fread((char*)&self->pixelType, 1, sizeof(self->pixelType), stream);
-  g_assert(((self->pixelType == 2) || (self->pixelType == 4) /* when sis_header->dim == 4 */));
+  g_assert(((self->pixelType == PIXEL_TYPE_UINT8) || (self->pixelType == PIXEL_TYPE_INT32) /* when sis_header->dim == 4 */));
   check = fread((char*)&self->sizeC, 1, sizeof(self->sizeC), stream);
-  g_assert(((self->sizeC == 3) || (self->sizeC == 1)));
+  g_assert(((self->sizeC == CHANNEL_GRAYSCALE) || (self->sizeC == CHANNEL_RGB)));
   check = fread((char*)&self->colorspace, 1, sizeof(self->colorspace), stream);
-  g_assert(((self->colorspace == 4) || (self->colorspace == 1)));
+  g_assert(((self->colorspace == COLORSPACE_BRIGHTFIELD) || (self->colorspace == COLORSPACE_FLUORESCENCE)));
   check = fread((char*)&self->compression, 1, sizeof(self->compression), stream); // codec
   g_assert(((self->compression == FORMAT_JPEG) || (self->compression == FORMAT_JP2)));
-  check = fread((char*)&self->quality, 1, sizeof(self->quality), stream );
+  check = fread((char*)&self->quality, 1, sizeof(self->quality), stream);
   //g_assert( self->quality == 90 || self->quality == 100 ); // some kind of JPEG quality ?
-  check = fread((char*)&self->dimx, 1, sizeof(self->dimx), stream );
+  check = fread((char*)&self->dimx, 1, sizeof(self->dimx), stream);
   //g_assert((self->dimx == 512)); // always tile of 512x512 ?
-  check = fread((char*)&self->dimy, 1, sizeof(self->dimy), stream );
+  check = fread((char*)&self->dimy, 1, sizeof(self->dimy), stream);
   //g_assert((self->dimy == 512)); //
-  check = fread((char*)&self->dimz, 1, sizeof(self->dimz), stream );
+  check = fread((char*)&self->dimz, 1, sizeof(self->dimz), stream);
   g_assert((self->dimz == 1) ); // dimz ?
+
+  self->backgroundColor[0] = 0;
+  self->backgroundColor[1] = 0;
+  self->backgroundColor[2] = 0;
+
+  uint32_t skip_bytes[17];
+  check = fread(skip_bytes, 1, sizeof(skip_bytes), stream);
+
+  if (self->pixelType == PIXEL_TYPE_UINT8) {
+
+    uint8_t backgroundColor[self->sizeC];
+    check = fread(backgroundColor, 1, sizeof(backgroundColor), stream);
+
+    for (int i = 0; i < self->sizeC; ++i) {
+      self->backgroundColor[i] = (uint8_t)(backgroundColor[i]);
+    }
+
+  } else if (self->pixelType == PIXEL_TYPE_INT32) {
+
+    int32_t backgroundColor[self->sizeC];
+    check = fread(backgroundColor, 1, sizeof(backgroundColor), stream);
+
+    for (int i = 0; i < self->sizeC; ++i) {
+      self->backgroundColor[i] = (uint8_t)(backgroundColor[i]);
+    }
+  }
+
+  uint32_t skip_bytes2[10 - self->sizeC];
+  check = fread(skip_bytes2, 1, sizeof(skip_bytes2), stream); // background color
+
+  uint32_t skip_bytes3;
+  check = fread((char*)&skip_bytes3, 1, sizeof(skip_bytes3), stream); // component order
+
+  int32_t usePyramid = 0;
+  check = fread((char*)&usePyramid, 1, sizeof(usePyramid), stream); // use pyramid
+
+  self->usePyramid = usePyramid != 0;
 
   return true;
 }
@@ -403,11 +586,11 @@ static void tile_read(struct tile * self, FILE * stream) {
   check = fread((char*)&self->dummy2, 1, sizeof(self->dummy2), stream);
 }
 
-static struct tile *findtile(struct tile *tiles, uint32_t ntiles, uint32_t coord[3], uint32_t lvl) {
+static struct tile *findtile(struct tile *tiles, uint32_t ntiles, uint32_t x, uint32_t y, uint32_t channel, uint32_t lvl) {
   //const struct tile *ret = NULL;
   for (uint32_t n = 0; n < ntiles; ++n) {
     struct tile * t = tiles + n;
-    if( (t->level == lvl) && (t->coord[0] == coord[0] && t->coord[1] == coord[1]) ) {
+    if( (t->level == lvl) && (t->coord[0] == x && t->coord[1] == y && t->coord[2] == channel) ) {
       return t;
     }
   }
@@ -420,111 +603,6 @@ struct olympus_ops_data {
   int32_t num_tiles;
 };
 
-//bool _openslide_png_decode_buffer(const void *buf, uint32_t len,
-//                                  uint32_t *dest,
-//                                  int32_t w, int32_t h,
-//                                  GError **err) {
-//}
-
-
-//static void area_prepared(GdkPixbufLoader *loader, void *data) {
-//  struct load_state *state = data;
-//
-//  if (state->err) {
-//    return;
-//  }
-//
-//  GdkPixbuf *pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
-//
-//  // validate image parameters
-//  // when adding RGBA support, note that gdk-pixbuf does not
-//  // premultiply alpha
-//  if (gdk_pixbuf_get_colorspace(pixbuf) != GDK_COLORSPACE_RGB ||
-//      gdk_pixbuf_get_bits_per_sample(pixbuf) != 8 ||
-//      gdk_pixbuf_get_has_alpha(pixbuf) ||
-//      gdk_pixbuf_get_n_channels(pixbuf) != 3) {
-//    g_set_error(&state->err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
-//                "Unsupported pixbuf parameters");
-//    return;
-//  }
-//  int w = gdk_pixbuf_get_width(pixbuf);
-//  int h = gdk_pixbuf_get_height(pixbuf);
-//  if (w != state->w || h != state->h) {
-//    g_set_error(&state->err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
-//                "Dimensional mismatch reading pixbuf: "
-//                "expected %dx%d, found %dx%d", state->w, state->h, w, h);
-//    return;
-//  }
-//
-//  // commit
-//  state->pixbuf = pixbuf;
-//}
-//
-//bool _openslide_gdkpixbuf_decode_buffer(const void *buf, uint32_t len,
-//                                        uint32_t *dest,
-//                                        int32_t w, int32_t h,
-//                                        GError **err) {
-//  GdkPixbufLoader *loader = NULL;
-//  bool success = false;
-//  struct load_state state = {
-//    .w = w,
-//    .h = h,
-//  };
-//  // create loader
-//  loader = gdk_pixbuf_loader_new_with_type("bmp", err);
-//  g_signal_connect(loader, "area-prepared", G_CALLBACK(area_prepared), &state);
-//
-//  if (!gdk_pixbuf_loader_write(loader, buf, len, err)) {
-//    g_prefix_error(err, "gdk-pixbuf error: ");
-//    goto DONE;
-//  }
-//  if (state.err) {
-//    goto DONE;
-//  }
-//
-//  // finish load
-//  if (!gdk_pixbuf_loader_close(loader, err)) {
-//    g_prefix_error(err, "gdk-pixbuf error: ");
-//    goto DONE;
-//  }
-//  if (state.err) {
-//    goto DONE;
-//  }
-//  g_assert(state.pixbuf);
-//
-//  uint8_t *pixels = gdk_pixbuf_get_pixels(state.pixbuf);
-//  int rowstride = gdk_pixbuf_get_rowstride(state.pixbuf);
-//  // decode bits
-//  for (int32_t y = 0; y < h; y++) {
-//    for (int32_t x = 0; x < w; x++) {
-//      dest[y * w + x] = 0xFF000000 |                              // A
-//                        pixels[y * rowstride + x * 3 + 0] << 16 | // R
-//                        pixels[y * rowstride + x * 3 + 1] << 8 |  // G
-//                        pixels[y * rowstride + x * 3 + 2];        // B
-//    }
-//  }
-//
-//  success = true;
-//
-//DONE:
-//  // clean up
-//  if (loader) {
-//    gdk_pixbuf_loader_close(loader, NULL);
-//    g_object_unref(loader);
-//  }
-//
-//  // now that the loader is closed, we know state.err won't be set
-//  // behind our back
-//  if (state.err) {
-//    // signal handler validation errors override GdkPixbuf errors
-//    g_clear_error(err);
-//    g_propagate_error(err, state.err);
-//    // signal handler errors should have been noticed before falling through
-//    g_assert(!success);
-//  }
-//  return success;
-//}
-
 static uint32_t *read_ets_image(openslide_t *osr,
                                 struct tile * t,
                                 enum image_format format,
@@ -536,7 +614,7 @@ static uint32_t *read_ets_image(openslide_t *osr,
 
   //int32_t num_tiles = data->num_tiles;
 
-  uint32_t *dest = g_slice_alloc(w * h * 4);
+  uint32_t *dest = g_slice_alloc0(w * h * sizeof(uint32_t));
 
   FILE *f = _openslide_fopen(filename, "rb", err);
 
@@ -546,7 +624,7 @@ static uint32_t *read_ets_image(openslide_t *osr,
   fseeko(f, t->offset, SEEK_SET);
   int32_t buflen = t->numbytes / sizeof(uint8_t);
 
-  uint8_t * buffer = g_slice_alloc(buflen);
+  void * buffer = g_slice_alloc(buflen);
   int32_t check = fread(buffer, 1, t->numbytes, f);
   if (!check)
     goto FAIL;
@@ -562,25 +640,26 @@ static uint32_t *read_ets_image(openslide_t *osr,
     result = _openslide_jp2k_decode_buffer(dest,
                                            w, h,
                                            buffer, buflen,
-                                           OPENSLIDE_JP2K_RGB,
+                                           -1,
                                            err);
     break;
-//  case FORMAT_PNG:
-//    result = _openslide_png_decode_buffer(buffer, buflen,
-//                                          dest,
-//                                          w, h,
-//                                          err);
-//    break;
-//  case FORMAT_BMP:
-//    result = _openslide_gdkpixbuf_decode_buffer(buffer, buflen,
-//                                                dest,
-//                                                w, h,
-//                                                err);
-//    break;
+  //case FORMAT_PNG:
+  //  result = _openslide_png_decode_buffer(buffer, buflen,
+  //                                        dest,
+  //                                        w, h,
+  //                                        err);
+  //  break;
+  //case FORMAT_BMP:
+  //  result = _openslide_gdkpixbuf_decode_buffer(buffer, buflen,
+  //                                              dest,
+  //                                              w, h,
+  //                                              err);
+  //  break;
   default:
     g_assert_not_reached();
   }
 
+  g_free(buffer);
   fclose(f);
 
   if (!result)
@@ -598,24 +677,28 @@ FAIL:
 static bool read_ets_tile(openslide_t *osr,
                           cairo_t *cr,
                           struct _openslide_level *level,
-                          int64_t tile_col, int64_t tile_row, // i.e TileIdx_x, TileIdx_y
+                          int64_t tile_col, int64_t tile_row, int64_t tile_channel, // i.e TileIdx_x, TileIdx_y
                           void *arg G_GNUC_UNUSED,
                           GError **err) {
   struct level *l = (struct level *) level;
   struct olympus_ops_data *data = osr->data;
   struct tile *tiles = data->tiles;
 
-  uint32_t ref[] = {tile_col, tile_row, 0};
-  struct tile *t = findtile(tiles, data->num_tiles, ref, l->current_lvl);
+  if (tile_channel > l->tile_ch) {
+    return false;
+  }
+
+  // TODO: Now we are keeping only the 1st channel!!
+  struct tile *t = findtile(tiles, data->num_tiles, tile_col, tile_row, tile_channel, l->current_lvl);
   bool success = true;
 
-  int iw = l->image_width; // Tilew
-  int ih = l->image_height; // Tileh
+  int32_t iw = l->image_width; // Tilew
+  int32_t ih = l->image_height; // Tileh
 
   // get the image data, possibly from cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            level, tile_col, tile_row,
+                                            level, tile_col, tile_row, tile_channel,
                                             &cache_entry);
 
   if (!tiledata) {
@@ -626,7 +709,7 @@ static bool read_ets_tile(openslide_t *osr,
     }
 
     _openslide_cache_put(osr->cache,
-                         level, tile_col, tile_row,
+                         level, tile_col, tile_row, tile_channel,
                          tiledata,
                          iw * ih * 4,
                          &cache_entry);
@@ -671,7 +754,7 @@ static bool read_ets_tile(openslide_t *osr,
 }
 
 static bool paint_ets_region(openslide_t *osr G_GNUC_UNUSED, cairo_t *cr,
-                             int64_t x, int64_t y,
+                             int64_t x, int64_t y, int64_t channel,
                              struct _openslide_level *level,
                              int32_t w, int32_t h,
                              GError **err) {
@@ -680,6 +763,7 @@ static bool paint_ets_region(openslide_t *osr G_GNUC_UNUSED, cairo_t *cr,
   return _openslide_grid_paint_region(l->grid, cr, NULL,
                                       x / level->downsample,
                                       y / level->downsample,
+                                      channel, // CHANNEL FOR FLUORESCENCE
                                       level, w, h,
                                       err);
 }
@@ -709,7 +793,6 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
   struct level **levels = NULL;
   uint32_t *tilexmax = NULL;
   uint32_t *tileymax = NULL;
-  int32_t level_count = 1;
 
   // open file
   FILE *f = _openslide_fopen(filename, "rb", err);
@@ -738,6 +821,8 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
     _openslide_io_error(err, "Couldn't seek to JPEG start");
     goto FAIL;
   }
+  int32_t level_count = 1;
+  int32_t channels = 0;
 
   // computes tiles dims
   tiles = g_new0(struct tile, sh->ntiles);
@@ -748,7 +833,11 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
     tiles[i] = t;
 
     level_count = t.level > level_count ? t.level : level_count;
+    channels = t.coord[2] > channels ? t.coord[2] : channels;
   }
+
+  ++level_count;
+  channels = channels != 0 ? channels + 1 : channels;
 
   // close the input file
   fclose(f);
@@ -773,7 +862,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
     uint32_t image_width = eh->dimx*(tilexmax[i] + 1);
     uint32_t image_height = eh->dimy*(tileymax[i] + 1);
 
-    // TODO: Up to now it works ONLY for image without z-stack!
+    // TODO: It works ONLY for image without z-stack!
     g_assert( eh->dimz == 1 );
 
     uint32_t tile_w = eh->dimx;
@@ -787,6 +876,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
 
     l->tile_w = (double)tile_w;
     l->tile_h = (double)tile_h;
+    l->tile_ch = channels;
     l->base.w = (double)image_width;
     l->base.h = (double)image_height;
     l->image_format = eh->compression;
@@ -808,6 +898,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
   _openslide_set_bounds_props_from_grid(osr, levels[0]->grid);
 
   osr->level_count = level_count;
+  osr->plane_count = channels == 0 ? 1 : channels;
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
   levels = NULL;
@@ -823,6 +914,10 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
   osr->data = data;
 
   osr->ops = &olympus_ets_ops;
+
+  // set background property
+  _openslide_set_background_color_prop(osr,
+    eh->backgroundColor[0], eh->backgroundColor[1], eh->backgroundColor[2]);
 
   return true;
 
@@ -854,9 +949,9 @@ static int width_compare(gconstpointer a, gconstpointer b) {
   const struct level *la = *(const struct level **) a;
   const struct level *lb = *(const struct level **) b;
 
-  if (la->tiffl.image_w > lb->tiffl.image_w) {
+  if (la->tiffl[0].image_w > lb->tiffl[0].image_w) {
     return -1;
-  } else if (la->tiffl.image_w == lb->tiffl.image_w) {
+  } else if (la->tiffl[0].image_w == lb->tiffl[0].image_w) {
     return 0;
   } else {
     return 1;
@@ -864,9 +959,9 @@ static int width_compare(gconstpointer a, gconstpointer b) {
 }
 
 static void destroy_tif(openslide_t *osr) {
-  struct generic_tiff_ops_data *data = osr->data;
+  struct ome_tiff_ops_data *data = osr->data;
   _openslide_tiffcache_destroy(data->tc);
-  g_slice_free(struct generic_tiff_ops_data, data);
+  g_slice_free(struct ome_tiff_ops_data, data);
 
   for (int32_t i = 0; i < osr->level_count; i++) {
     struct level *l = (struct level *) osr->levels[i];
@@ -879,11 +974,11 @@ static void destroy_tif(openslide_t *osr) {
 static bool read_tif_tile(openslide_t *osr,
                           cairo_t *cr,
                           struct _openslide_level *level,
-                          int64_t tile_col, int64_t tile_row,
+                          int64_t tile_col, int64_t tile_row, int64_t tile_channel,
                           void *arg,
                           GError **err) {
   struct level *l = (struct level *) level;
-  struct _openslide_tiff_level *tiffl = &l->tiffl;
+  struct _openslide_tiff_level *tiffl = &l->tiffl[tile_channel];
   TIFF *tiff = arg;
 
   // tile size
@@ -893,7 +988,7 @@ static bool read_tif_tile(openslide_t *osr,
   // cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            level, tile_col, tile_row,
+                                            level, tile_col, tile_row, tile_channel,
                                             &cache_entry);
   if (!tiledata) {
     tiledata = g_slice_alloc(tw * th * 4);
@@ -913,7 +1008,7 @@ static bool read_tif_tile(openslide_t *osr,
     }
 
     // put it in the cache
-    _openslide_cache_put(osr->cache, level, tile_col, tile_row,
+    _openslide_cache_put(osr->cache, level, tile_col, tile_row, tile_channel,
                          tiledata, tw * th * 4,
                          &cache_entry);
   }
@@ -934,11 +1029,11 @@ static bool read_tif_tile(openslide_t *osr,
 }
 
 static bool paint_tif_region(openslide_t *osr, cairo_t *cr,
-                             int64_t x, int64_t y,
+                             int64_t x, int64_t y, int64_t channel,
                              struct _openslide_level *level,
                              int32_t w, int32_t h,
                              GError **err) {
-  struct generic_tiff_ops_data *data = osr->data;
+  struct ome_tiff_ops_data *data = osr->data;
   struct level *l = (struct level *) level;
 
   TIFF *tiff = _openslide_tiffcache_get(data->tc, err);
@@ -949,6 +1044,7 @@ static bool paint_tif_region(openslide_t *osr, cairo_t *cr,
   bool success = _openslide_grid_paint_region(l->grid, cr, tiff,
                                               x / l->base.downsample,
                                               y / l->base.downsample,
+                                              channel, // CHANNEL FOR FLUORESCENCE
                                               level, w, h,
                                               err);
   _openslide_tiffcache_put(data->tc, tiff);
@@ -956,11 +1052,173 @@ static bool paint_tif_region(openslide_t *osr, cairo_t *cr,
   return success;
 }
 
-static const struct _openslide_ops generic_tiff_ops = {
+static const struct _openslide_ops ome_tiff_ops = {
   .paint_region = paint_tif_region,
   .destroy = destroy_tif,
 };
 
+
+static struct tiff_image_desc *parse_xml_description(const char *xml,
+                                           GError **err) {
+
+  xmlXPathContext *ctx = NULL;
+  struct tiff_image_desc *img = NULL;
+
+  // try to parse the xml
+  xmlDoc *doc = _openslide_xml_parse(xml, err);
+  if (doc == NULL) {
+    return NULL;
+  }
+
+  // create XPATH context to query the document
+  ctx = _openslide_xml_xpath_create(doc);
+
+  // create image struct
+  img = g_slice_new0(struct tiff_image_desc);
+
+  img->mycroscope_manufacturer = _openslide_xml_xpath_get_string(ctx, "/d:OME/d:Instrument/d:Microscope/@Manufacturer");
+  img->mycroscope_model = _openslide_xml_xpath_get_string(ctx, "/d:OME/d:Instrument/d:Microscope/@Model");
+
+  // get lightsources nodes
+  xmlXPathObject *light_result = _openslide_xml_xpath_eval(ctx,
+                                                    "/d:OME/d:Instrument/d:LightSource");
+  if (!light_result) {
+    g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+                "Can't find lightsources element");
+    goto FAIL;
+  }
+
+  // get luminance information
+  img->channels = light_result->nodesetval->nodeNr;
+  img->lightsources = g_new(struct lightsource, img->channels);
+
+  for (int i = 0; i < img->channels; ++i) {
+    xmlNode *light_node = light_result->nodesetval->nodeTab[i];
+
+    // get manufacturer node
+    xmlChar *xmlstr = xmlGetProp(light_node, BAD_CAST "Manufacturer");
+    img->lightsources[i].manufacturer = g_strdup((char *) xmlstr);
+
+    xmlstr = xmlGetProp(light_node, BAD_CAST "Model");
+    img->lightsources[i].model = g_strdup((char *) xmlstr);
+
+    xmlFree(xmlstr);
+  }
+
+  // get image nodes
+  xmlXPathObject *images_result = _openslide_xml_xpath_eval(ctx,
+                                                     "/d:OME/d:Image");
+  if (!images_result) {
+    g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+                "Can't find images element");
+    goto FAIL;
+  }
+
+  img->levels = images_result->nodesetval->nodeNr;
+  img->img = g_new(struct image, img->levels);
+
+
+  for (int i = 0; i < img->levels; ++i) {
+    xmlNode *img_node = images_result->nodesetval->nodeTab[i];
+    ctx->node = img_node;
+
+    img->img[i].creation_date = _openslide_xml_xpath_get_string(ctx, "d:AcquisitionDate/text()");
+
+    // get view node
+    xmlNode *pixels = _openslide_xml_xpath_get_node(ctx, "d:Pixels");
+    if (!pixels) {
+      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+                  "Can't find pixels node");
+      goto FAIL;
+    }
+
+    PARSE_INT_ATTRIBUTE_OR_FAIL(pixels, "SizeX", img->img[i].sizeX);
+    PARSE_INT_ATTRIBUTE_OR_FAIL(pixels, "SizeY", img->img[i].sizeY);
+
+    PARSE_DBL_ATTRIBUTE_OR_FAIL(pixels, "PhysicalSizeX", img->img[i].mpp_x);
+    PARSE_DBL_ATTRIBUTE_OR_FAIL(pixels, "PhysicalSizeY", img->img[i].mpp_y);
+
+    ctx->node = pixels;
+
+    // get view node
+    xmlXPathObject *channels = _openslide_xml_xpath_eval(ctx, "d:Channel");
+    if (!channels) {
+      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+                  "Can't find channels node");
+      goto FAIL;
+    }
+
+    img->img[i].ch = g_new(struct channel, channels->nodesetval->nodeNr);
+    g_assert(channels->nodesetval->nodeNr == img->channels);
+
+    for (int j = 0; j < channels->nodesetval->nodeNr; ++j) {
+      xmlNode *channel_node = channels->nodesetval->nodeTab[j];
+
+      xmlChar *xmlstr = xmlGetProp(channel_node, BAD_CAST "Name");
+      img->img[i].ch[j].name = g_strdup((char *) xmlstr);
+
+      img->img[i].ch[j].emission_wavelength = _openslide_xml_parse_int_attr(channel_node, "EmissionWavelength", err);
+      img->img[i].ch[j].color = _openslide_xml_parse_int_attr(channel_node, "Color", err);
+    }
+
+    // get view node
+    xmlXPathObject *planes = _openslide_xml_xpath_eval(ctx, "d:Plane");
+    if (!planes) {
+      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+                  "Can't find planes node");
+      goto FAIL;
+    }
+
+    img->img[i].exposuretime = g_new(double, planes->nodesetval->nodeNr);
+    g_assert(planes->nodesetval->nodeNr == channels->nodesetval->nodeNr);
+
+    for (int j = 0; j < planes->nodesetval->nodeNr; ++j) {
+      xmlNode *pln_node = planes->nodesetval->nodeTab[j];
+      img->img[i].exposuretime[j] = _openslide_xml_parse_double_attr(pln_node, "ExposureTime", err);
+
+    }
+  }
+
+//  printf("----------device model: %s\n", img->mycroscope_manufacturer);
+//  printf("----------device version: %s\n", img->mycroscope_model);
+//  printf("----------%d lightsource\n", img->channels);
+//  for (int i = 0; i < img->channels; ++i) {
+//    printf("--------------lightsource %d: manufacturer %s; model %s\n",
+//      i, img->lightsources[i].manufacturer, img->lightsources[i].model);
+//  }
+//  printf("----------%d levels\n", img->levels);
+//  for (int i = 0; i < img->levels; ++i) {
+//    printf("--------------img %d: acquisition %s; size [%d, %d]; mpp [%f, %f]\n",
+//      i, img->img[i].creation_date, img->img[i].sizeX, img->img[i].sizeY,
+//      img->img[i].mpp_x, img->img[i].mpp_y);
+//    for (int j = 0; j < img->channels; ++j) {
+//      printf("----------------channel %s: emission_wavelength %d; color %d\n",
+//        img->img[i].ch[j].name,
+//        img->img[i].ch[j].emission_wavelength,
+//        img->img[i].ch[j].color);
+//    }
+//    for (int j = 0; j < img->channels; ++j) {
+//      printf("--------------exposure time %f\n", img->img[i].exposuretime[j]);
+//    }
+//  }
+
+
+  return img;
+
+FAIL:
+  xmlXPathFreeContext(ctx);
+  xmlFreeDoc(doc);
+
+  return NULL;
+}
+
+static void set_prop(openslide_t *osr, const char *name, const char *value) {
+  if (value) {
+    g_hash_table_insert(osr->properties,
+                        g_strdup(name),
+                        g_strdup(value));
+  }
+}
 
 static bool olympus_open_tif(openslide_t *osr, const char *filename,
                              struct _openslide_tifflike *tl,
@@ -975,71 +1233,95 @@ static bool olympus_open_tif(openslide_t *osr, const char *filename,
     goto FAIL;
   }
 
-  // accumulate tiled levels
-  do {
-    // confirm that this directory is tiled
-    if (!TIFFIsTiled(tiff)) {
-      continue;
-    }
+  // get image description
+  char *image_desc;
+  if (!TIFFGetField(tiff, TIFFTAG_IMAGEDESCRIPTION, &image_desc)) {
+    return false;
+  }
 
-    // confirm it is either the first image, or reduced-resolution
-    if (TIFFCurrentDirectory(tiff) != 0) {
-      uint32_t subfiletype;
-      if (!TIFFGetField(tiff, TIFFTAG_SUBFILETYPE, &subfiletype)) {
-        continue;
-      }
+  // read XML
+  struct tiff_image_desc * img_desc = parse_xml_description(image_desc, err);
+  if (!img_desc) {
+    goto FAIL;
+  }
 
-      if (!(subfiletype & FILETYPE_REDUCEDIMAGE)) {
-        continue;
-      }
-    }
+  // set some properties
+  set_prop(osr, "olympus.device-model", img_desc->mycroscope_manufacturer);
+  set_prop(osr, "olympus.device-version", img_desc->mycroscope_model);
 
-    // verify that we can read this compression (hard fail if not)
-    uint16_t compression;
-    if (!TIFFGetField(tiff, TIFFTAG_COMPRESSION, &compression)) {
-      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
-                  "Can't read compression scheme");
-      goto FAIL;
-    };
-    if (!TIFFIsCODECConfigured(compression)) {
-      g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
-                  "Unsupported TIFF compression: %u", compression);
-      goto FAIL;
-    }
+  for (int i = 0; i < img_desc->levels; ++i) {
 
-    // create level
     struct level *l = g_slice_new0(struct level);
-    struct _openslide_tiff_level *tiffl = &l->tiffl;
-    if (!_openslide_tiff_level_init(tiff,
-                                    TIFFCurrentDirectory(tiff),
-                                    (struct _openslide_level *) l,
-                                    tiffl,
-                                    err)) {
-      g_slice_free(struct level, l);
-      goto FAIL;
-    }
-    l->grid = _openslide_grid_create_simple(osr,
-                                            tiffl->tiles_across,
-                                            tiffl->tiles_down,
-                                            tiffl->tile_w,
-                                            tiffl->tile_h,
-                                            read_tif_tile);
+    l->tiffl = g_new0(struct _openslide_tiff_level, img_desc->channels);
 
+    for (int j = 0; j < img_desc->channels; ++j) {
+
+      struct _openslide_tiff_level *tiffl = &l->tiffl[j];
+
+      // confirm that this directory is tiled
+      if (!TIFFIsTiled(tiff)) {
+        continue;
+      }
+
+      // Override channel-level information
+
+      if (!_openslide_tiff_level_init(tiff,
+                                      TIFFCurrentDirectory(tiff),
+                                      (struct _openslide_level *) l,
+                                      tiffl,
+                                      err)) {
+        g_slice_free(struct level, l);
+        goto FAIL;
+      }
+
+      // check level order
+      if (j > 0) {
+        int32_t w_ = tiffl->image_w;
+        int32_t h_ = tiffl->image_h;
+        g_assert(w_ == l->tiffl[j - 1].image_w);
+        g_assert(h_ == l->tiffl[j - 1].image_h);
+      }
+
+      TIFFReadDirectory(tiff);
+    }
+
+    l->grid = _openslide_grid_create_simple(osr,
+                                            l->tiffl[0].tiles_across,
+                                            l->tiffl[0].tiles_down,
+                                            l->tiffl[0].tile_w,
+                                            l->tiffl[0].tile_h,
+                                            read_tif_tile);
     // add to array
     g_ptr_array_add(level_array, l);
-  } while (TIFFReadDirectory(tiff));
+  }
+
+
+  // TODO: add more properties (expecially related to channels)
+
+//  printf("----------%d lightsource\n", img->channels);
+//  for (int i = 0; i < img->channels; ++i) {
+//    printf("--------------lightsource %d: manufacturer %s; model %s\n",
+//      i, img->lightsources[i].manufacturer, img->lightsources[i].model);
+//  }
+//  printf("----------%d levels\n", img->levels);
+//  for (int i = 0; i < img->levels; ++i) {
+//    printf("--------------img %d: acquisition %s; size [%d, %d]; mpp [%f, %f]\n",
+//      i, img->img[i].creation_date, img->img[i].sizeX, img->img[i].sizeY,
+//      img->img[i].mpp_x, img->img[i].mpp_y);
+//    for (int j = 0; j < img->channels; ++j) {
+//      printf("----------------channel %s: emission_wavelength %d; color %d\n",
+//        img->img[i].ch[j].name,
+//        img->img[i].ch[j].emission_wavelength,
+//        img->img[i].ch[j].color);
+//    }
+//    for (int j = 0; j < img->channels; ++j) {
+//      printf("--------------exposure time %f\n", img->img[i].exposuretime[j]);
+//    }
+//  }
+
 
   // sort tiled levels
   g_ptr_array_sort(level_array, width_compare);
-
-  // set hash and properties
-  struct level *top_level = level_array->pdata[level_array->len - 1];
-  if (!_openslide_tifflike_init_properties_and_hash(osr, tl, quickhash1,
-                                                    top_level->tiffl.dir,
-                                                    0,
-                                                    err)) {
-    goto FAIL;
-  }
 
   // unwrap level array
   int32_t level_count = level_array->len;
@@ -1048,16 +1330,16 @@ static bool olympus_open_tif(openslide_t *osr, const char *filename,
   level_array = NULL;
 
   // allocate private data
-  struct generic_tiff_ops_data *data =
-    g_slice_new0(struct generic_tiff_ops_data);
+  struct ome_tiff_ops_data *data = g_slice_new0(struct ome_tiff_ops_data);
 
   // store osr data
   g_assert(osr->data == NULL);
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
   osr->level_count = level_count;
+  osr->plane_count = img_desc->channels;
   osr->data = data;
-  osr->ops = &generic_tiff_ops;
+  osr->ops = &ome_tiff_ops;
 
   // put TIFF handle and store tiffcache reference
   _openslide_tiffcache_put(tc, tiff);
@@ -1144,7 +1426,7 @@ static bool olympus_open_vsi(openslide_t *osr, const char *filename,
   set_resolution_prop(osr, tiff, OPENSLIDE_PROPERTY_NAME_MPP_Y,
                       TIFFTAG_YRESOLUTION);
 
-  if (!_openslide_tiff_add_associated_image(osr, "label", tc,
+  if (!_openslide_tiff_add_associated_image(osr, "macro", tc,
                                             1, err)) {
     goto FAIL;
   }
@@ -1179,6 +1461,7 @@ FAIL:
 
   return success;
 }
+
 
 const struct _openslide_format _openslide_format_olympus = {
   .name = "olympus-vsi",

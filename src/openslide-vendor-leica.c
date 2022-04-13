@@ -54,14 +54,14 @@ static const char LEICA_ATTR_IFD[] = "ifd";
 static const char LEICA_ATTR_Z_PLANE[] = "z";
 static const char LEICA_VALUE_BRIGHTFIELD[] = "brightfield";
 
-#define PARSE_INT_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)		\
-  do {								\
-    GError *tmp_err = NULL;					\
-    OUT = _openslide_xml_parse_int_attr(NODE, NAME, &tmp_err);	\
-    if (tmp_err)  {						\
-      g_propagate_error(err, tmp_err);				\
-      goto FAIL;						\
-    }								\
+#define PARSE_INT_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)    \
+  do {                \
+    GError *tmp_err = NULL;         \
+    OUT = _openslide_xml_parse_int_attr(NODE, NAME, &tmp_err);  \
+    if (tmp_err)  {           \
+      g_propagate_error(err, tmp_err);        \
+      goto FAIL;            \
+    }               \
   } while (0)
 
 struct leica_ops_data {
@@ -148,7 +148,7 @@ static void destroy(openslide_t *osr) {
 static bool read_tile(openslide_t *osr,
                       cairo_t *cr,
                       struct _openslide_level *level G_GNUC_UNUSED,
-                      int64_t tile_col, int64_t tile_row,
+                      int64_t tile_col, int64_t tile_row, int64_t channel,
                       void *arg,
                       GError **err) {
   struct read_tile_args *args = arg;
@@ -161,7 +161,7 @@ static bool read_tile(openslide_t *osr,
   // cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            args->area, tile_col, tile_row,
+                                            args->area, tile_col, tile_row, channel,
                                             &cache_entry);
   if (!tiledata) {
     tiledata = g_slice_alloc(tw * th * 4);
@@ -182,9 +182,9 @@ static bool read_tile(openslide_t *osr,
 
     // put it in the cache
     _openslide_cache_put(osr->cache,
-			 args->area, tile_col, tile_row,
-			 tiledata, tw * th * 4,
-			 &cache_entry);
+       args->area, tile_col, tile_row, channel,
+       tiledata, tw * th * 4,
+       &cache_entry);
   }
 
   // draw it
@@ -203,10 +203,10 @@ static bool read_tile(openslide_t *osr,
 }
 
 static bool paint_region(openslide_t *osr, cairo_t *cr,
-			 int64_t x, int64_t y,
-			 struct _openslide_level *level,
-			 int32_t w, int32_t h,
-			 GError **err) {
+       int64_t x, int64_t y, int64_t channel,
+       struct _openslide_level *level,
+       int32_t w, int32_t h,
+       GError **err) {
   struct leica_ops_data *data = osr->data;
   struct level *l = (struct level *) level;
   bool success = true;
@@ -226,7 +226,9 @@ static bool paint_region(openslide_t *osr, cairo_t *cr,
     int64_t ax = x / l->base.downsample - area->offset_x;
     int64_t ay = y / l->base.downsample - area->offset_y;
     success = _openslide_grid_paint_region(area->grid, cr, &args,
-                                           ax, ay, level, w, h,
+                                           ax, ay,
+                                           channel, // CHANNEL FOR FLUORESCENCE
+                                           level, w, h,
                                            err);
     if (!success) {
       break;
@@ -398,7 +400,7 @@ static struct collection *parse_xml_description(const char *xml,
   // parse the xml
   xmlDoc *doc = _openslide_xml_parse(xml, err);
   if (doc == NULL) {
-    return false;
+    return NULL;
   }
 
   // create XPATH context to query the document
@@ -408,7 +410,7 @@ static struct collection *parse_xml_description(const char *xml,
   /*
     scn (root node)
       collection
-        barcode		(2010/10/01 namespace only)
+        barcode   (2010/10/01 namespace only)
         image
           dimension
           dimension
@@ -878,6 +880,7 @@ static bool leica_open(openslide_t *osr, const char *filename,
   g_assert(osr->data == NULL);
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
+  osr->plane_count = 1;
   osr->level_count = level_count;
   osr->data = data;
   osr->ops = &leica_ops;

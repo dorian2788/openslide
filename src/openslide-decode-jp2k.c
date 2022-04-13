@@ -275,11 +275,13 @@ bool _openslide_jp2k_decode_buffer(uint32_t *dest,
                 w, h, image->x1, image->y1);
     goto DONE;
   }
-  if (image->numcomps != 3) {
-    g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
-                "Expected 3 image components, found %u", image->numcomps);
-    goto DONE;
-  }
+
+  // Fluorescence images have only 1 component as int32_t types
+  //if (image->numcomps != 3) {
+  //  g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+  //              "Expected 3 image components, found %u", image->numcomps);
+  //  goto DONE;
+  //}
   // TODO more checks?
 
   // decode
@@ -295,7 +297,24 @@ bool _openslide_jp2k_decode_buffer(uint32_t *dest,
   g_clear_error(&tmp_err);  // clear any spurious message
 
   // copy pixels
-  unpack_argb(space, image->comps, dest, w, h);
+  if (image->numcomps == 3) {
+    // 3-channels image
+    unpack_argb(space, image->comps, dest, w, h);
+
+  } else if (image->numcomps == 1) { // Fluorescence case
+    int c0_sub_x = w / image->comps[0].w;
+    int c0_sub_y = h / image->comps[0].h;
+
+    for (int32_t y = 0; y < h; ++y) {
+      int32_t c0_row_base = (y / c0_sub_y) * image->comps[0].w;
+
+      for (int32_t x = 0; x < w; ++x) {
+        uint32_t c0 = image->comps[0].data[c0_row_base + (x / c0_sub_x)];
+        dest[y * w + x] = c0;
+      }
+    }
+
+  }
 
   success = true;
 
@@ -375,15 +394,35 @@ bool _openslide_jp2k_decode_buffer(uint32_t *dest,
                 w, h, image->x1, image->y1);
     goto DONE;
   }
-  if (image->numcomps != 3) {
-    g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
-                "Expected 3 image components, found %d", image->numcomps);
-    goto DONE;
-  }
+
+  // Fluorescence images have only 1 component as int32_t types
+  //if (image->numcomps != 3) {
+  //  g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
+  //              "Expected 3 image components, found %d", image->numcomps);
+  //  goto DONE;
+  //}
 
   // TODO more checks?
 
-  unpack_argb(space, image->comps, dest, w, h);
+  // copy pixels
+  if (image->numcomps == 3) {
+    // 3-channels image
+    unpack_argb(space, image->comps, dest, w, h);
+
+  } else if (image->numcomps == 1) { // Fluorescence case
+    int c0_sub_x = w / image->comps[0].w;
+    int c0_sub_y = h / image->comps[0].h;
+
+    for (int32_t y = 0; y < h; ++y) {
+      int32_t c0_row_base = (y / c0_sub_y) * image->comps[0].w;
+
+      for (int32_t x = 0; x < w; ++x) {
+        uint32_t c0 = image->comps[0].data[c0_row_base + (x / c0_sub_x)];
+        dest[y * w + x] = c0;
+      }
+    }
+
+  }
 
   success = true;
 

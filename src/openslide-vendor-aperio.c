@@ -122,6 +122,7 @@ static bool render_missing_tile(struct level *l,
     success = _openslide_grid_paint_region(l->prev->grid, cr, tiff,
                                            (tile_col * tw - 1) / relative_ds,
                                            (tile_row * th - 1) / relative_ds,
+                                           0, // CHANNEL FOR FLUORESCENCE
                                            (struct _openslide_level *) l->prev,
                                            ceil((tw + 2) / relative_ds),
                                            ceil((th + 2) / relative_ds),
@@ -192,7 +193,7 @@ static bool decode_tile(struct level *l,
 static bool read_tile(openslide_t *osr,
 		      cairo_t *cr,
 		      struct _openslide_level *level,
-		      int64_t tile_col, int64_t tile_row,
+		      int64_t tile_col, int64_t tile_row, int64_t channel,
 		      void *arg,
 		      GError **err) {
   struct level *l = (struct level *) level;
@@ -206,7 +207,7 @@ static bool read_tile(openslide_t *osr,
   // cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            level, tile_col, tile_row,
+                                            level, tile_col, tile_row, channel,
                                             &cache_entry);
   if (!tiledata) {
     tiledata = g_slice_alloc(tw * th * 4);
@@ -224,7 +225,7 @@ static bool read_tile(openslide_t *osr,
     }
 
     // put it in the cache
-    _openslide_cache_put(osr->cache, level, tile_col, tile_row,
+    _openslide_cache_put(osr->cache, level, tile_col, tile_row, channel,
 			 tiledata, tw * th * 4,
 			 &cache_entry);
   }
@@ -245,7 +246,7 @@ static bool read_tile(openslide_t *osr,
 }
 
 static bool paint_region(openslide_t *osr, cairo_t *cr,
-			 int64_t x, int64_t y,
+			 int64_t x, int64_t y, int64_t channel,
 			 struct _openslide_level *level,
 			 int32_t w, int32_t h,
 			 GError **err) {
@@ -260,6 +261,7 @@ static bool paint_region(openslide_t *osr, cairo_t *cr,
   bool success = _openslide_grid_paint_region(l->grid, cr, tiff,
                                               x / l->base.downsample,
                                               y / l->base.downsample,
+                                              channel, // CHANNEL FOR FLUORESCENCE
                                               level, w, h,
                                               err);
   _openslide_tiffcache_put(data->tc, tiff);
@@ -606,6 +608,7 @@ static bool aperio_open(openslide_t *osr,
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
   osr->level_count = level_count;
+  osr->plane_count = 1;
   osr->data = data;
   osr->ops = &aperio_ops;
 

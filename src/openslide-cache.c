@@ -36,6 +36,7 @@ struct _openslide_cache_key {
   void *plane;  // cookie for coordinate plane (level, grid, etc.)
   int64_t x;
   int64_t y;
+  int64_t channel;
 };
 
 // hash table value
@@ -120,7 +121,7 @@ static guint hash_func(gconstpointer key) {
   // assume 32-bit hash
   return (guint) ((c_key->binding_id << 16) ^
                   ((guintptr) c_key->plane) ^
-                  ((34369 * (uint64_t) c_key->y) + ((uint64_t) c_key->x)));
+                  ((34369 * (uint64_t) c_key->y) + ((uint64_t) c_key->x) + ((uint64_t) c_key->channel)));
 }
 
 static gboolean key_equal_func(gconstpointer a,
@@ -131,7 +132,8 @@ static gboolean key_equal_func(gconstpointer a,
   return (c_a->binding_id == c_b->binding_id) &&
     (c_a->plane == c_b->plane) &&
     (c_a->x == c_b->x) &&
-    (c_a->y == c_b->y);
+    (c_a->y == c_b->y) &&
+    (c_a->channel == c_b->channel);
 }
 
 static void hash_destroy_key(gpointer data) {
@@ -319,6 +321,7 @@ void _openslide_cache_put(struct _openslide_cache_binding *cb,
         void *plane,
         int64_t x,
         int64_t y,
+        int64_t channel,
         void *data,
         uint64_t size_in_bytes,
         struct _openslide_cache_entry **_entry) {
@@ -371,6 +374,7 @@ void _openslide_cache_put(struct _openslide_cache_binding *cb,
   key->plane = plane;
   key->x = x;
   key->y = y;
+  key->channel = channel;
 
   // create value
   struct _openslide_cache_value *value =
@@ -409,6 +413,7 @@ void *_openslide_cache_get(struct _openslide_cache_binding *cb,
          void *plane,
          int64_t x,
          int64_t y,
+         int64_t channel,
          struct _openslide_cache_entry **_entry) {
   // get cache and lock
 #if !GLIB_CHECK_VERSION(2,31,0)
@@ -428,7 +433,8 @@ void *_openslide_cache_get(struct _openslide_cache_binding *cb,
     .binding_id = cb->id,
     .plane = plane,
     .x = x,
-    .y = y
+    .y = y,
+    .channel = channel
   };
 
   // lookup key, maybe return NULL

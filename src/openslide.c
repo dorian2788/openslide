@@ -462,6 +462,14 @@ int32_t openslide_get_level_count(openslide_t *osr) {
   return osr->level_count;
 }
 
+int32_t openslide_get_plane_count(openslide_t *osr) {
+  if (openslide_get_error(osr)) {
+    return -1;
+  }
+
+  return osr->plane_count;
+}
+
 int32_t openslide_get_layer_count(openslide_t *osr) {
   return openslide_get_level_count(osr);
 }
@@ -525,7 +533,7 @@ void openslide_cancel_prefetch_hint(openslide_t *osr G_GNUC_UNUSED,
 
 static bool read_region(openslide_t *osr,
 			cairo_t *cr,
-			int64_t x, int64_t y,
+			int64_t x, int64_t y, int64_t channel,
 			int32_t level,
 			int64_t w, int64_t h,
 			GError **err) {
@@ -566,8 +574,8 @@ static bool read_region(openslide_t *osr,
     cairo_translate(cr, tx, ty);
 
     // paint
-    if (w > 0 && h > 0) {
-      success = osr->ops->paint_region(osr, cr, x, y, l, w, h, err);
+    if (w > 0 && h > 0 && channel >= 0) {
+      success = osr->ops->paint_region(osr, cr, x, y, channel, l, w, h, err);
     }
   }
 
@@ -599,7 +607,7 @@ static bool ensure_nonnegative_dimensions(openslide_t *osr, int64_t w, int64_t h
 
 void openslide_read_region(openslide_t *osr,
 			   uint32_t *dest,
-			   int64_t x, int64_t y,
+			   int64_t x, int64_t y, int64_t channel,
 			   int32_t level,
 			   int64_t w, int64_t h) {
   GError *tmp_err = NULL;
@@ -651,7 +659,7 @@ void openslide_read_region(openslide_t *osr,
       cairo_surface_destroy(surface);
 
       // paint
-      if (!read_region(osr, cr, sx, sy, level, sw, sh, &tmp_err)) {
+      if (!read_region(osr, cr, sx, sy, channel, level, sw, sh, &tmp_err)) {
         cairo_destroy(cr);
         goto Exit;
       }
@@ -679,7 +687,7 @@ Exit:
 
 void openslide_cairo_read_region(openslide_t *osr,
 				 cairo_t *cr,
-				 int64_t x, int64_t y,
+				 int64_t x, int64_t y, int64_t channel,
 				 int32_t level,
 				 int64_t w, int64_t h) {
   GError *tmp_err = NULL;
@@ -692,7 +700,7 @@ void openslide_cairo_read_region(openslide_t *osr,
     return;
   }
 
-  if (read_region(osr, cr, x, y, level, w, h, &tmp_err)) {
+  if (read_region(osr, cr, x, y, channel, level, w, h, &tmp_err)) {
     _openslide_check_cairo_status(cr, &tmp_err);
   }
 

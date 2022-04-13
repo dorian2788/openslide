@@ -53,6 +53,7 @@ extern "C" {
  * @param cr The destination cairo context.
  * @param x The top left x-coordinate, in the level 0 reference frame.
  * @param y The top left y-coordinate, in the level 0 reference frame.
+ * @param channel The desired channel/plane, 0 for brightfield; >= 0 for fluorescence
  * @param level The desired level.
  * @param w The width of the region. Must be non-negative.
  * @param h The height of the region. Must be non-negative.
@@ -66,7 +67,7 @@ extern "C" {
 //OPENSLIDE_PUBLIC()
 void openslide_cairo_read_region(openslide_t *osr,
 				 cairo_t *cr,
-				 int64_t x, int64_t y,
+				 int64_t x, int64_t y, int64_t channel,
 				 int32_t level,
 				 int64_t w, int64_t h);
 //@}

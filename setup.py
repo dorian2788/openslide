@@ -279,7 +279,7 @@ setup(
   include_package_data          = True, # no absolute paths are allowed
   platforms                     = 'any',
   classifiers                   = [
-                                   #'License :: OSI Approved :: GPL License',
+                                   #'License :: OSI Approved :: LGPL License',
                                    'Natural Language :: English',
                                    'Operating System :: MacOS :: MacOS X',
                                    'Operating System :: POSIX',
@@ -294,7 +294,7 @@ setup(
                                    'Programming Language :: Python :: Implementation :: CPython',
                                    'Programming Language :: Python :: Implementation :: PyPy'
                                   ],
-  license                       = 'MIT',
+  license                       = 'LGPL',
   cmdclass                      = cmdclass,
   ext_modules                   = [
                                     CMakeExtension(name=NAME)

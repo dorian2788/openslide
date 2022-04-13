@@ -72,24 +72,24 @@ static const char ATTR_OVERLAP_Y[] = "OverlapY";
 static const char DIRECTION_RIGHT[] = "RIGHT";
 static const char DIRECTION_UP[] = "UP";
 
-#define PARSE_INT_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)		\
-  do {								\
-    GError *tmp_err = NULL;					\
-    OUT = _openslide_xml_parse_int_attr(NODE, NAME, &tmp_err);	\
-    if (tmp_err)  {						\
-      g_propagate_error(err, tmp_err);				\
-      goto FAIL;						\
-    }								\
+#define PARSE_INT_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)    \
+  do {                \
+    GError *tmp_err = NULL;         \
+    OUT = _openslide_xml_parse_int_attr(NODE, NAME, &tmp_err);  \
+    if (tmp_err)  {           \
+      g_propagate_error(err, tmp_err);        \
+      goto FAIL;            \
+    }               \
   } while (0)
 
-#define PARSE_DOUBLE_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)			\
-  do {									\
-    GError *tmp_err = NULL;						\
-    OUT = _openslide_xml_parse_double_attr(NODE, NAME, &tmp_err);	\
-    if (tmp_err)  {							\
-      g_propagate_error(err, tmp_err);					\
-      goto FAIL;							\
-    }									\
+#define PARSE_DOUBLE_ATTRIBUTE_OR_FAIL(NODE, NAME, OUT)     \
+  do {                  \
+    GError *tmp_err = NULL;           \
+    OUT = _openslide_xml_parse_double_attr(NODE, NAME, &tmp_err); \
+    if (tmp_err)  {             \
+      g_propagate_error(err, tmp_err);          \
+      goto FAIL;              \
+    }                 \
   } while (0)
 
 struct ventana_ops_data {
@@ -150,7 +150,7 @@ static void destroy(openslide_t *osr) {
 static bool read_subtile(openslide_t *osr,
                          cairo_t *cr,
                          struct _openslide_level *level,
-                         int64_t subtile_col, int64_t subtile_row,
+                         int64_t subtile_col, int64_t subtile_row, int64_t channel,
                          void *arg,
                          GError **err) {
   struct level *l = (struct level *) level;
@@ -173,7 +173,7 @@ static bool read_subtile(openslide_t *osr,
   // get tile data, possibly from cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            level, tile_col, tile_row,
+                                            level, tile_col, tile_row, channel,
                                             &cache_entry);
   if (!tiledata) {
     tiledata = g_slice_alloc(tw * th * 4);
@@ -193,7 +193,7 @@ static bool read_subtile(openslide_t *osr,
     }
 
     // put it in the cache
-    _openslide_cache_put(osr->cache, level, tile_col, tile_row,
+    _openslide_cache_put(osr->cache, level, tile_col, tile_row, channel,
                          tiledata, tw * th * 4,
                          &cache_entry);
   }
@@ -240,17 +240,17 @@ static bool read_subtile(openslide_t *osr,
 static bool read_subtile_tilemap(openslide_t *osr,
                                  cairo_t *cr,
                                  struct _openslide_level *level,
-                                 int64_t subtile_col, int64_t subtile_row,
+                                 int64_t subtile_col, int64_t subtile_row, int64_t channel,
                                  void *subtile G_GNUC_UNUSED,
                                  void *arg,
                                  GError **err) {
   return read_subtile(osr, cr, level,
-                      subtile_col, subtile_row,
+                      subtile_col, subtile_row, channel,
                       arg, err);
 }
 
 static bool paint_region(openslide_t *osr, cairo_t *cr,
-                         int64_t x, int64_t y,
+                         int64_t x, int64_t y, int64_t channel,
                          struct _openslide_level *level,
                          int32_t w, int32_t h,
                          GError **err) {
@@ -265,6 +265,7 @@ static bool paint_region(openslide_t *osr, cairo_t *cr,
   bool success = _openslide_grid_paint_region(l->grid, cr, tiff,
                                               x / l->base.downsample,
                                               y / l->base.downsample,
+                                              channel, // CHANNEL FOR FLUORESCENCE
                                               level, w, h,
                                               err);
   _openslide_tiffcache_put(data->tc, tiff);
@@ -953,14 +954,14 @@ static bool ventana_open(openslide_t *osr, const char *filename,
       // macro image
       if (!_openslide_tiff_add_associated_image(osr, "macro", tc, dir,
                                                 err)) {
-	goto FAIL;
+  goto FAIL;
       }
 
     } else if (!strcmp(image_desc, THUMBNAIL_DESCRIPTION)) {
       // thumbnail image
       if (!_openslide_tiff_add_associated_image(osr, "thumbnail", tc, dir,
                                                 err)) {
-	goto FAIL;
+  goto FAIL;
       }
     }
   } while (TIFFReadDirectory(tiff));
@@ -1008,6 +1009,7 @@ static bool ventana_open(openslide_t *osr, const char *filename,
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
   osr->level_count = level_count;
+  osr->plane_count = 1;
   osr->data = data;
   osr->ops = &ventana_ops;
 

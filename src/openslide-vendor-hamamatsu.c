@@ -679,7 +679,7 @@ OUT:
 static bool read_jpeg_tile(openslide_t *osr,
                            cairo_t *cr,
                            struct _openslide_level *level,
-                           int64_t tile_col, int64_t tile_row,
+                           int64_t tile_col, int64_t tile_row, int64_t channel,
                            void *arg G_GNUC_UNUSED,
                            GError **err) {
   struct jpeg_level *l = (struct jpeg_level *) level;
@@ -704,7 +704,7 @@ static bool read_jpeg_tile(openslide_t *osr,
   // get the jpeg data, possibly from cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            level, tile_col, tile_row,
+                                            level, tile_col, tile_row, channel,
                                             &cache_entry);
 
   if (!tiledata) {
@@ -719,7 +719,7 @@ static bool read_jpeg_tile(openslide_t *osr,
     }
 
     _openslide_cache_put(osr->cache,
-                         level, tile_col, tile_row,
+                         level, tile_col, tile_row, channel,
                          tiledata,
                          tw * th * 4,
                          &cache_entry);
@@ -743,7 +743,7 @@ static bool read_jpeg_tile(openslide_t *osr,
 
 
 static bool jpeg_paint_region(openslide_t *osr, cairo_t *cr,
-                              int64_t x, int64_t y,
+                              int64_t x, int64_t y, int64_t channel,
                               struct _openslide_level *level,
                               int32_t w, int32_t h,
                               GError **err) {
@@ -780,6 +780,7 @@ static bool jpeg_paint_region(openslide_t *osr, cairo_t *cr,
   bool success = _openslide_grid_paint_region(l->grid, cr, NULL,
                                               x / level->downsample,
                                               y / level->downsample,
+                                              channel, // CHANNEL FOR FLUORESCENCE
                                               level, w, h,
                                               err);
 
@@ -1432,6 +1433,7 @@ static bool init_jpeg_ops(openslide_t *osr,
   // populate the level count and array
   g_assert(osr->levels == NULL);
   osr->level_count = level_count;
+  osr->plane_count = 1;
   osr->levels = (struct _openslide_level **) levels;
 
   // init background thread for finding restart markers
@@ -1722,7 +1724,7 @@ static void ngr_destroy(openslide_t *osr) {
 static bool ngr_read_tile(openslide_t *osr,
                           cairo_t *cr,
                           struct _openslide_level *level,
-                          int64_t tile_x, int64_t tile_y,
+                          int64_t tile_x, int64_t tile_y, int64_t channel,
                           void *arg G_GNUC_UNUSED,
                           GError **err) {
   struct ngr_level *l = (struct ngr_level *) level;
@@ -1732,7 +1734,7 @@ static bool ngr_read_tile(openslide_t *osr,
   int tilesize = tw * th * 4;
   struct _openslide_cache_entry *cache_entry;
   // look up tile in cache
-  uint32_t *tiledata = _openslide_cache_get(osr->cache, level, tile_x, tile_y,
+  uint32_t *tiledata = _openslide_cache_get(osr->cache, level, tile_x, tile_y, channel,
                                             &cache_entry);
 
   if (!tiledata) {
@@ -1779,7 +1781,7 @@ static bool ngr_read_tile(openslide_t *osr,
     g_slice_free1(buf_size, buf);
 
     // put it in the cache
-    _openslide_cache_put(osr->cache, level, tile_x, tile_y,
+    _openslide_cache_put(osr->cache, level, tile_x, tile_y, channel,
                          tiledata,
                          tilesize,
                          &cache_entry);
@@ -1801,7 +1803,7 @@ static bool ngr_read_tile(openslide_t *osr,
 }
 
 static bool ngr_paint_region(openslide_t *osr G_GNUC_UNUSED, cairo_t *cr,
-                             int64_t x, int64_t y,
+                             int64_t x, int64_t y, int64_t channel,
                              struct _openslide_level *level,
                              int32_t w, int32_t h,
                              GError **err) {
@@ -1810,6 +1812,7 @@ static bool ngr_paint_region(openslide_t *osr G_GNUC_UNUSED, cairo_t *cr,
   return _openslide_grid_paint_region(l->grid, cr, NULL,
                                       x / level->downsample,
                                       y / level->downsample,
+                                      channel, // CHANNEL FOR FLUORESCENCE
                                       level, w, h,
                                       err);
 }
@@ -1913,6 +1916,7 @@ static bool hamamatsu_vmu_part2(openslide_t *osr,
   // set osr data
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
+  osr->plane_count = 1;
   osr->level_count = num_levels;
   osr->ops = &ngr_ops;
 

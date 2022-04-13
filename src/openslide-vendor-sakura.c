@@ -69,24 +69,24 @@ enum color_index {
   NUM_INDEXES = 3,
 };
 
-#define PREPARE_OR_FAIL(DEST, DB, SQL) do {				\
-    DEST = _openslide_sqlite_prepare(DB, SQL, err);			\
-    if (!DEST) {							\
-      goto FAIL;							\
-    }									\
+#define PREPARE_OR_FAIL(DEST, DB, SQL) do {       \
+    DEST = _openslide_sqlite_prepare(DB, SQL, err);     \
+    if (!DEST) {              \
+      goto FAIL;              \
+    }                 \
   } while (0)
 
-#define BIND_TEXT_OR_FAIL(STMT, INDEX, STR) do {			\
-    if (sqlite3_bind_text(STMT, INDEX, STR, -1, SQLITE_TRANSIENT)) {	\
-      _openslide_sqlite_propagate_stmt_error(STMT, err);		\
-      goto FAIL;							\
-    }									\
+#define BIND_TEXT_OR_FAIL(STMT, INDEX, STR) do {      \
+    if (sqlite3_bind_text(STMT, INDEX, STR, -1, SQLITE_TRANSIENT)) {  \
+      _openslide_sqlite_propagate_stmt_error(STMT, err);    \
+      goto FAIL;              \
+    }                 \
   } while (0)
 
-#define STEP_OR_FAIL(STMT) do {						\
-    if (!_openslide_sqlite_step(STMT, err)) {				\
-      goto FAIL;							\
-    }									\
+#define STEP_OR_FAIL(STMT) do {           \
+    if (!_openslide_sqlite_step(STMT, err)) {       \
+      goto FAIL;              \
+    }                 \
   } while (0)
 
 struct sakura_ops_data {
@@ -364,7 +364,7 @@ OUT:
 static bool read_tile(openslide_t *osr,
                       cairo_t *cr,
                       struct _openslide_level *level,
-                      int64_t tile_col, int64_t tile_row,
+                      int64_t tile_col, int64_t tile_row, int64_t channel,
                       void *arg,
                       GError **err) {
   struct sakura_ops_data *data = osr->data;
@@ -376,7 +376,7 @@ static bool read_tile(openslide_t *osr,
   // cache
   struct _openslide_cache_entry *cache_entry;
   uint32_t *tiledata = _openslide_cache_get(osr->cache,
-                                            level, tile_col, tile_row,
+                                            level, tile_col, tile_row, channel,
                                             &cache_entry);
   if (!tiledata) {
     tiledata = g_slice_alloc(tile_size * tile_size * 4);
@@ -408,9 +408,9 @@ static bool read_tile(openslide_t *osr,
 
     // put it in the cache
     _openslide_cache_put(osr->cache,
-			 level, tile_col, tile_row,
-			 tiledata, tile_size * tile_size * 4,
-			 &cache_entry);
+       level, tile_col, tile_row, channel,
+       tiledata, tile_size * tile_size * 4,
+       &cache_entry);
   }
 
   // draw it
@@ -429,7 +429,7 @@ static bool read_tile(openslide_t *osr,
 }
 
 static bool paint_region(openslide_t *osr, cairo_t *cr,
-                         int64_t x, int64_t y,
+                         int64_t x, int64_t y, int64_t channel,
                          struct _openslide_level *level,
                          int32_t w, int32_t h,
                          GError **err) {
@@ -447,6 +447,7 @@ static bool paint_region(openslide_t *osr, cairo_t *cr,
   success = _openslide_grid_paint_region(l->grid, cr, stmt,
                                          x / l->base.downsample,
                                          y / l->base.downsample,
+                                         channel, // CHANNEL FOR FLUORESCENCE
                                          level, w, h,
                                          err);
 
@@ -1003,6 +1004,7 @@ static bool sakura_open(openslide_t *osr, const char *filename,
   g_assert(osr->levels == NULL);
   osr->levels = (struct _openslide_level **) levels;
   osr->level_count = level_count;
+  osr->plane_count = 1;
   osr->data = data;
   osr->ops = &sakura_ops;
 

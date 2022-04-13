@@ -112,6 +112,17 @@ int32_t openslide_get_level_count(openslide_t *osr);
 
 
 /**
+ * Get the number of planes in the whole slide image.
+ *
+ * @param osr The OpenSlide object.
+ * @return The number of planes, or -1 if an error occurred.
+ * @since 3.3.0
+ */
+OPENSLIDE_PUBLIC()
+int32_t openslide_get_plane_count(openslide_t *osr);
+
+
+/**
  * Get the dimensions of level 0 (the largest level). Exactly
  * equivalent to calling openslide_get_level_dimensions(osr, 0, w, h).
  *
@@ -178,6 +189,7 @@ int32_t openslide_get_best_level_for_downsample(openslide_t *osr,
  * @param dest The destination buffer for the ARGB data.
  * @param x The top left x-coordinate, in the level 0 reference frame.
  * @param y The top left y-coordinate, in the level 0 reference frame.
+ * @param plane Image plane to read (0 for brightfield; >= 0 for fluorescence).
  * @param level The desired level.
  * @param w The width of the region. Must be non-negative.
  * @param h The height of the region. Must be non-negative.
@@ -185,7 +197,7 @@ int32_t openslide_get_best_level_for_downsample(openslide_t *osr,
 OPENSLIDE_PUBLIC()
 void openslide_read_region(openslide_t *osr,
                            uint32_t *dest,
-                           int64_t x, int64_t y,
+                           int64_t x, int64_t y, int64_t plane,
                            int32_t level,
                            int64_t w, int64_t h);
 

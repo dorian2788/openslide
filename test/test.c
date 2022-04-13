@@ -70,7 +70,7 @@ static void test_tile_walk(openslide_t *osr,
   for (int64_t y = 0; y < h; y += tile_size) {
     for (int64_t x = 0; x < w; x += tile_size) {
       //gettimeofday(&tv, NULL);
-      openslide_read_region(osr, buf, x, y, 0, tile_size, tile_size);
+      openslide_read_region(osr, buf, x, y, 0, 0, tile_size, tile_size);
       //gettimeofday(&tv2, NULL);
       //printf("time: %d\n", (tv2.tv_sec - tv.tv_sec) * 1000 + (tv2.tv_usec - tv.tv_usec) / 1000);
     }
@@ -146,7 +146,7 @@ static void test_image_fetch(openslide_t *osr,
     uint32_t *buf = malloc(num_bytes);
 
     printf("x: %"PRId64", y: %"PRId64", level: %d, w: %"PRId64", h: %"PRId64"\n", x, y, level, w, h);
-    openslide_read_region(osr, buf, x, y, level, w, h);
+    openslide_read_region(osr, buf, x, y, 0, level, w, h);
 
     // write as PPM
     if (!skip_write) {
@@ -172,7 +172,7 @@ static void test_horizontal_walk(openslide_t *osr,
   uint32_t *buf = malloc(patch_w * patch_h * 4);
 
   for (int64_t x = start_x; x < d; x += stride) {
-    openslide_read_region(osr, buf, x, y, level, patch_w, patch_h);
+    openslide_read_region(osr, buf, x, y, 0, level, patch_w, patch_h);
     printf("%"PRId64"\r", x);
     fflush(stdout);
   }
@@ -193,7 +193,7 @@ static void test_vertical_walk(openslide_t *osr,
   uint32_t *buf = malloc(patch_w * patch_h * 4);
 
   for (int64_t y = start_y; y < d; y += stride) {
-    openslide_read_region(osr, buf, x, y, level, patch_w, patch_h);
+    openslide_read_region(osr, buf, x, y, 0, level, patch_w, patch_h);
     printf("%"PRId64"\r", y);
     fflush(stdout);
   }
@@ -223,7 +223,7 @@ static void test_pdf(openslide_t *osr, const char *filename) {
     cairo_set_source_rgb(cr, 0.0, 0.0, 1.0);
     cairo_paint(cr);
 
-    openslide_cairo_read_region(osr, cr, (orig_w - w) / 2, (orig_h - h) / 2, i, w, h);
+    openslide_cairo_read_region(osr, cr, (orig_w - w) / 2, (orig_h - h) / 2, 0, i, w, h);
     printf(".");
     fflush(stdout);
 
@@ -298,11 +298,11 @@ int main(int argc, char **argv) {
   //  int64_t elapsed;
 
   // test NULL dest
-  openslide_read_region(osr, NULL, 0, 0, 0, 1000, 1000);
+  openslide_read_region(osr, NULL, 0, 0, 0, 0, 1000, 1000);
 
   // test empty dest
   uint32_t* item = 0;
-  openslide_read_region(osr, item, 0, 0, 0, 0, 0);
+  openslide_read_region(osr, item, 0, 0, 0, 0, 0, 0);
 
   /*
   // test empty surface
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
     cairo_image_surface_create(CAIRO_FORMAT_RGB24, 0, 0);
   cairo_t *cr = cairo_create(surface);
   cairo_surface_destroy(surface);
-  openslide_cairo_read_region(osr, cr, 0, 0, 0, 1000, 1000);
+  openslide_cairo_read_region(osr, cr, 0, 0, 0, 0, 1000, 1000);
   cairo_destroy(cr);
   */
 

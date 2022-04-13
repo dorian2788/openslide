@@ -6,10 +6,10 @@ long_description_content_type = text/markdown,
 author = Nico Curti,
 author_email = nico.curti2@unibo.it,
 platforms = any,
-license = MIT
+license = LGPL
 license_file = @CMAKE_SOURCE_DIR@/LICENSE
 description-file = @CMAKE_SOURCE_DIR@/README.md
-classifiers = License :: OSI Approved :: MIT License,
+classifiers = License :: OSI Approved :: LGPL License,
     Natural Language :: English,
     Operating System :: MacOS :: MacOS X,
     Operating System :: POSIX,

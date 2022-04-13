@@ -23,6 +23,10 @@ else:
   CG = 2
   CB = 3
 
+BRIGHTFIELD = 0
+FLUORESCENCE = 1
+
+
 class OpenslideError (Exception):
   '''
   An error produced by the OpenSlide library.
@@ -81,6 +85,9 @@ cdef class Openslide:
     filename : str
       The filename to open. On Windows, this must be in UTF-8.
 
+    dtype : int
+      Type of WSI. Possible values are BRIGHTFIELD, DAPI, etc.
+
   Notes
   -----
   The Openslide object tries to be as much as possible compatible
@@ -93,9 +100,13 @@ cdef class Openslide:
   .. [3] Numpy library. https://github.com/numpy/numpy
   '''
 
-  def __init__ (self, filename=None):
+  def __init__ (self, filename=None, dtype=BRIGHTFIELD):
 
     self._level = 0
+    self._plane = dtype
+
+    if self._plane != BRIGHTFIELD and self._plane != FLUORESCENCE:
+       raise OpenslideError('Invalid Acquisition type give.')
 
     if filename is not None:
 
@@ -231,6 +242,18 @@ cdef class Openslide:
     '''
     return openslide_get_level_count(self.thisptr)
 
+  @property
+  def get_plane_count (self) -> int:
+    '''
+    Get the number of planes in the whole slide image.
+
+    Returns
+    -------
+      planes : int
+        The number of planes, or -1 if an error occurred.
+    '''
+    return openslide_get_plane_count(self.thisptr)
+
   def __array__ (self) -> np.ndarray:
     '''
     Compatibility with numpy array.
@@ -251,8 +274,11 @@ cdef class Openslide:
 
     w, h = self.shape
     x, y = (0, 0)
+    planes = self.get_plane_count
 
-    return self.read_region(self._level, x, y, w, h)
+    img = [self.read_region(x, y, i, w, h) for i in range(planes)]
+
+    return np.dstack(img)
 
   def __getitem__(self, item) -> np.ndarray:
     '''
@@ -372,7 +398,42 @@ cdef class Openslide:
     return level
 
 
-  def read_region (self, int level, long int x, long int y, long int w, long int h) -> np.ndarray:
+  def _read_brightfield_region(self, int level, long int x, long int y, long int w, long int h) -> np.ndarray:
+    cdef unsigned int * dest = <unsigned int *> malloc(w * h * sizeof(unsigned int))
+
+    openslide_read_region(self.thisptr, dest, x, y, 0, level, w, h)
+
+    if dest is NULL:
+      raise OpenslideError('Incorrect region read. '
+                           'The level image has shape: ({:d}, {:d}). '
+                           'The request shape is: ({:d}, {:d})'.format(*self.get_level_dimensions(level), w - x, h - y))
+
+    cdef unsigned char * u8 = <unsigned char*>dest;
+    argb2rgba(u8, w * h * 4)
+
+    wsi = np.asarray(<np.uint32_t[: h * w]> dest)
+
+    # convert to a readable image
+    wsi = wsi.view(dtype=np.uint8).reshape(h, w, 4)
+
+    return wsi
+
+  def _read_fluorescence_region(self, int level, long int x, long int y, long int plane, long int w, long int h) -> np.ndarray:
+    cdef unsigned int * dest = <unsigned int *> malloc(w * h * sizeof(unsigned int))
+
+    openslide_read_region(self.thisptr, dest, x, y, plane, level, w, h)
+
+    if dest is NULL:
+      raise OpenslideError('Incorrect region read. '
+                           'The level image has shape: ({:d}, {:d}). '
+                           'The request shape is: ({:d}, {:d})'.format(*self.get_level_dimensions(level), w - x, h - y))
+
+    wsi = np.asarray(<np.uint32_t[: h * w]> dest)
+    wsi = wsi.reshape(h, w)
+
+    return wsi
+
+  def read_region (self, long int x, long int y, long int plane, long int w, long int h) -> np.ndarray:
     '''
     Copy pre-multiplied ARGB data from a whole slide image.
 
@@ -381,14 +442,14 @@ cdef class Openslide:
 
     Parameters
     ----------
-      level : int
-        The desired level.
-
       x : int
         The top left x-coordinate, in the level 0 reference frame.
 
       y : int
         The top left y-coordinate, in the level 0 reference frame.
+
+      plane : int
+        Image plane to read (0 for brightfield; >= 0 for fluorescence).
 
       w : int
         The width of the region. Must be non-negative.
@@ -409,25 +470,12 @@ cdef class Openslide:
     .. warning::
       If an error occurs or has occurred an OpenslideError is raised
     '''
-    cdef unsigned int * dest = <unsigned int *> malloc(w * h * sizeof(unsigned int))
 
-    openslide_read_region(self.thisptr, dest, x, y, level, w, h)
+    if self._plane == BRIGHTFIELD:
+      return self._read_brightfield_region(self._level, x, y, w, h)
 
-    if dest is NULL:
-      raise OpenslideError('Incorrect region read. '
-                           'The level image has shape: ({:d}, {:d}). '
-                           'The request shape is: ({:d}, {:d})'.format(*self.get_level_dimensions(level), w - x, h - y))
-
-    cdef unsigned char * u8 = <unsigned char*>dest;
-    argb2rgba(u8, w * h * 4)
-
-    wsi = np.asarray(<np.uint32_t[: h * w]> dest)
-
-    # convert to a readable image
-    wsi = wsi.view(dtype=np.uint8).reshape(h, w, 4)
-
-    return wsi
-
+    elif self._plane == FLUORESCENCE:
+      return self._read_fluorescence_region(self._level, x, y, plane, w, h)
 
   def read_associated_image (self, name):
     '''

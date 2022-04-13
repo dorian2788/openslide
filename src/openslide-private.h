@@ -59,6 +59,7 @@ struct _openslide {
   struct _openslide_level **levels;
   void *data;
   int32_t level_count;
+  int32_t plane_count;
 
   // associated images
   GHashTable *associated_images;  // created automatically
@@ -90,7 +91,7 @@ struct _openslide_level {
 /* the function pointer structure for backends */
 struct _openslide_ops {
   bool (*paint_region)(openslide_t *osr, cairo_t *cr,
-		       int64_t x, int64_t y,
+		       int64_t x, int64_t y, int64_t channel,
 		       struct _openslide_level *level,
 		       int32_t w, int32_t h,
 		       GError **err);
@@ -179,14 +180,14 @@ struct _openslide_grid;
 typedef bool (*_openslide_grid_simple_read_fn)(openslide_t *osr,
                                                cairo_t *cr,
                                                struct _openslide_level *level,
-                                               int64_t tile_col, int64_t tile_row,
+                                               int64_t tile_col, int64_t tile_row, int64_t tile_channel,
                                                void *arg,
                                                GError **err);
 
 typedef bool (*_openslide_grid_tilemap_read_fn)(openslide_t *osr,
                                                 cairo_t *cr,
                                                 struct _openslide_level *level,
-                                                int64_t tile_col, int64_t tile_row,
+                                                int64_t tile_col, int64_t tile_row, int64_t tile_channel,
                                                 void *tile,
                                                 void *arg,
                                                 GError **err);
@@ -238,7 +239,7 @@ void _openslide_grid_get_bounds(struct _openslide_grid *grid,
 bool _openslide_grid_paint_region(struct _openslide_grid *grid,
                                   cairo_t *cr,
                                   void *arg,
-                                  double x, double y,
+                                  double x, double y, double channel,
                                   struct _openslide_level *level,
                                   int32_t w, int32_t h,
                                   GError **err);
@@ -275,6 +276,7 @@ void _openslide_cache_put(struct _openslide_cache_binding *cb,
 			  void *plane,  // coordinate plane (level or grid)
 			  int64_t x,
 			  int64_t y,
+        int64_t channel,
 			  void *data,
 			  uint64_t size_in_bytes,
 			  struct _openslide_cache_entry **entry);
@@ -283,6 +285,7 @@ void *_openslide_cache_get(struct _openslide_cache_binding *cb,
 			   void *plane,
 			   int64_t x,
 			   int64_t y,
+         int64_t channel,
 			   struct _openslide_cache_entry **entry);
 
 // value unref

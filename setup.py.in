@@ -92,7 +92,7 @@ setup(
                                   ],
   platforms                     = 'any',
   classifiers                   = [
-                                   #'License :: OSI Approved :: GPL License',
+                                   #'License :: OSI Approved :: LGPL License',
                                    'Natural Language :: English',
                                    'Operating System :: MacOS :: MacOS X',
                                    'Operating System :: POSIX',
@@ -107,5 +107,5 @@ setup(
                                    'Programming Language :: Python :: Implementation :: CPython',
                                    'Programming Language :: Python :: Implementation :: PyPy'
                                   ],
-  license                       = 'MIT',
+  license                       = 'LGPL',
 )
