@@ -6,22 +6,14 @@ from libcpp.string cimport string
 cimport numpy as np
 
 import os
-import sys
 import numpy as np
 
 __author__  = ['Nico Curti']
 __email__ = ['nico.curti2@unibo.it']
 
-if sys.byteorder == 'little':
-  CB = 0
-  CG = 1
-  CR = 2
-  CA = 3
-else:
-  CA = 0
-  CR = 1
-  CG = 2
-  CB = 3
+__all__ = ['Openslide', 'OpenslideError',
+           'BRIGHTFIELD', 'FLUORESCENCE']
+
 
 BRIGHTFIELD = 0
 FLUORESCENCE = 1
@@ -36,38 +28,11 @@ class OpenslideError (Exception):
   The error raised is set to 1.
   '''
 
-  def __init__ (self, message, errors=1):
+  def __init__ (self, message : str, errors : int=1):
 
     super(OpenslideError, self).__init__(message)
 
     self.errors = errors
-
-
-cdef argb2rgba (unsigned char * buf, unsigned int len):
-  '''
-  Convert ARGB buffer to RGBA
-  '''
-  cdef unsigned int cur = 0
-  cdef unsigned char a, r, g, b;
-
-  for cur in range(0, len, 4):
-    a = buf[cur + CA]
-    r = buf[cur + CR]
-    g = buf[cur + CG]
-    b = buf[cur + CB]
-
-    if a != 0 and a != 255:
-      r = r * 255 / a
-      g = g * 255 / a
-      b = b * 255 / a
-
-    buf[cur + 0] = r
-    buf[cur + 1] = g
-    buf[cur + 2] = b
-    buf[cur + 3] = a
-
-  return
-
 
 cdef class Openslide:
 
@@ -100,7 +65,7 @@ cdef class Openslide:
   .. [3] Numpy library. https://github.com/numpy/numpy
   '''
 
-  def __init__ (self, filename=None, dtype=BRIGHTFIELD):
+  def __init__ (self, str filename=None, int dtype=BRIGHTFIELD):
 
     self._level = 0
     self._plane = dtype
@@ -406,7 +371,7 @@ cdef class Openslide:
     if dest is NULL:
       raise OpenslideError('Incorrect region read. '
                            'The level image has shape: ({:d}, {:d}). '
-                           'The request shape is: ({:d}, {:d})'.format(*self.get_level_dimensions(level), w - x, h - y))
+                           'The request shape is: ({:d}, {:d})'.format(*self.shape, w - x, h - y))
 
     cdef unsigned char * u8 = <unsigned char*>dest;
     argb2rgba(u8, w * h * 4)
@@ -426,7 +391,7 @@ cdef class Openslide:
     if dest is NULL:
       raise OpenslideError('Incorrect region read. '
                            'The level image has shape: ({:d}, {:d}). '
-                           'The request shape is: ({:d}, {:d})'.format(*self.get_level_dimensions(level), w - x, h - y))
+                           'The request shape is: ({:d}, {:d})'.format(*self.shape, w - x, h - y))
 
     wsi = np.asarray(<np.uint32_t[: h * w]> dest)
     wsi = wsi.reshape(h, w)
@@ -477,7 +442,7 @@ cdef class Openslide:
     elif self._plane == FLUORESCENCE:
       return self._read_fluorescence_region(self._level, x, y, plane, w, h)
 
-  def read_associated_image (self, name):
+  def read_associated_image (self, str name):
     '''
     Copy pre-multiplied ARGB data from an associated image.
 
@@ -542,7 +507,7 @@ cdef class Openslide:
     '''
     openslide_close(self.thisptr)
 
-  def _openslide_can_open (self, filename_bytes) -> bool:
+  def _openslide_can_open (self, bytes filename_bytes) -> bool:
     '''
     Quickly determine whether a whole slide image is recognized.
 
@@ -580,7 +545,7 @@ cdef class Openslide:
 
     return True
 
-  def open (self, filename):
+  def open (self, str filename):
     '''
     Open a whole slide image.
 

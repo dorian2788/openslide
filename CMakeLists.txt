@@ -232,6 +232,12 @@ if ( PYTHON_WRAP )
   add_definitions (-DNPY_NO_DEPRECATED_API)
   add_subdirectory(${PYC_DIR}/source)
 
+  include_directories(${PYC_DIR}/lib)
+  file(GLOB deepzoom_sources "${PYC_DIR}/lib/*.c")
+  file(GLOB deepzoom_headers "${PYC_DIR}/lib/*.h")
+  list(APPEND sources ${deepzoom_sources})
+  list(APPEND headers ${deepzoom_headers})
+
 endif ()
 
 if (BUILD_DOCS)

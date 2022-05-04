@@ -1,7 +1,7 @@
 # distutils: language = c++
 # cython: language_level=2
 
-cimport numpy as np
+import sys
 
 cdef extern from "openslide.h":
 
@@ -24,6 +24,11 @@ cdef extern from "openslide.h":
 
   void openslide_get_associated_image_dimensions(openslide_t * osr, const char * name, long int * w, long int * h);
   void openslide_read_associated_image(openslide_t * osr, const char * name, unsigned int * dest);
+
+
+cdef extern from "argb2rgba.h":
+
+  void argb2rgba (unsigned char * buf, unsigned int len);
 
 cdef class Openslide:
 

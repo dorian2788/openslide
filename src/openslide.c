@@ -59,8 +59,8 @@ static const struct _openslide_format *formats[] = {
   &_openslide_format_leica,
   &_openslide_format_philips,
   &_openslide_format_ventana,
+  &_openslide_format_olympus, // move before generic to allow OME-Tiff
   &_openslide_format_generic_tiff,
-  &_openslide_format_olympus,
   NULL,
 };
 
