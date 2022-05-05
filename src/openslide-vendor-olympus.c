@@ -829,6 +829,12 @@ static const struct _openslide_ops olympus_ets_ops = {
   .destroy = destroy_ets,
 };
 
+
+int ascending_compare (const void * a, const void * b) {
+  return ( *(uint32_t*)b - *(uint32_t*)a );
+}
+
+
 static bool olympus_open_ets(openslide_t *osr, const char *filename,
                              struct _openslide_tifflike *tl,
                              struct _openslide_hash *quickhash1, GError **err) {
@@ -898,14 +904,32 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
     tileymax[lvl] = t.coord[1] > tileymax[lvl] ? t.coord[1] : tileymax[lvl];
   }
 
+  // sort dimensions
+  // NOTE: this is a sanity check to ensure the correct order of levels
+  // in the dimension evaluation.
+  // In the next loop for level creation, we will assume that the order
+  // of levels follows the HR -> LR order (ref check about index in image
+  // width and height).
+  qsort(tilexmax, level_count, sizeof(uint32_t), ascending_compare);
+  qsort(tileymax, level_count, sizeof(uint32_t), ascending_compare);
+
   levels = g_new0(struct level *, level_count);
+
+  uint32_t image_width = 0;
+  uint32_t image_height = 0;
 
   for (int i = 0; i < level_count; ++i) {
     struct level *l = g_slice_new0(struct level);
 
     // compute image info:
-    uint32_t image_width = eh->dimx*(tilexmax[i] + 1);
-    uint32_t image_height = eh->dimy*(tileymax[i] + 1);
+
+    // NOTE: we are assuming that each level is exactly the 2x of
+    // the previous one. The information about the correct downsampling
+    // were not found in the ETS header...
+    // This is just a brute force hacking to provide the correct dimensions
+    // of images for low level images
+    image_width = i == 0 ? eh->dimx * tilexmax[i] : ceil(image_width / 2);
+    image_height = i == 0 ? eh->dimy * tileymax[i] : ceil(image_height / 2);
 
     // TODO: It works ONLY for image without z-stack!
     g_assert( eh->dimz == 1 );
@@ -929,6 +953,8 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
     l->image_height = eh->dimy;
     l->current_lvl = i;
 
+    // NOTE: the assumption about image downsampling affects also
+    // this line
     l->base.downsample = pow(2., i);
 
     l->grid = _openslide_grid_create_simple(osr,
