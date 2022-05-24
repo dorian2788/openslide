@@ -3,6 +3,7 @@
 
 from cython.operator cimport dereference as deref
 cimport numpy as np
+from numpy cimport int64_t
 
 from openslide cimport openslide_detect_vendor
 from openslide cimport openslide_read_region
@@ -238,8 +239,8 @@ cdef class DeepZoom:
   def get_l0_dimensions (self) -> tuple:
     '''
     '''
-    cdef long int [1] w
-    cdef long int [1] h
+    cdef int64_t [1] w
+    cdef int64_t [1] h
 
     deepzoom_get_l0_dimensions(self.thisptr, w, h)
 
@@ -300,13 +301,13 @@ cdef class DeepZoom:
   def get_tile (self, int level, int w, int h):
     '''
     '''
-    cdef long int [1] x
-    cdef long int [1] y
+    cdef int64_t [1] x
+    cdef int64_t [1] y
     cdef int [1] lvl
-    cdef long int [1] outw
-    cdef long int [1] outh
-    cdef long int [1] sw
-    cdef long int [1] sh
+    cdef int64_t [1] outw
+    cdef int64_t [1] outh
+    cdef int64_t [1] sw
+    cdef int64_t [1] sh
 
     deepzoom_get_tile_info(self.thisptr, level, w, h, x, y, lvl, outw, outh, sw, sh)
 

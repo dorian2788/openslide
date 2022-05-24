@@ -1,4 +1,5 @@
 cmake_minimum_required (VERSION 3.10.2)
+include(CMakeDependentOption)
 
 set (BUILD_SHARED_LIBS "TRUE" CACHE BOOL "Create openslide as a shared library")
 
@@ -8,8 +9,30 @@ set(Openslide_PATCH_VERSION 1)
 set(Openslide_TWEAK_VERSION 0)
 
 set(Openslide_VERSION ${Openslide_MAJOR_VERSION}.${Openslide_MINOR_VERSION}.${Openslide_PATCH_VERSION}.${Openslide_TWEAK_VERSION})
-
 set (CMAKE_PROJECT_HOMEPAGE_URL "https://github.com/Nico-Curti/openslide")
+
+message (STATUS "Openslide VERSION: ${Openslide_VERSION}")
+
+option(CMAKE_VERBOSE_MAKEFILE "Create verbose makefile" OFF)
+option(PYTHON_WRAP "Enable Python wrap compilation" OFF)
+option(BUILD_TEST "Enable Testing compilation" OFF)
+option(BUILD_DOCS "Enable Documentation build support" OFF)
+option(BUILD_JAVA "Enable JAVA build support" OFF)
+option(BUILD_JS   "Enable JavaScript build support" OFF)
+
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+  message(STATUS "VCPKG found: $ENV{VCPKG_ROOT}")
+  message(STATUS "Using VCPKG integration")
+  message(STATUS "VCPKG_MANIFEST_FEATURES: ${VCPKG_MANIFEST_FEATURES}")
+  if(DEFINED ENV{VCPKG_DEFAULT_TRIPLET})
+    message(STATUS "Setting default vcpkg target triplet to $ENV{VCPKG_DEFAULT_TRIPLET}")
+    set(VCPKG_TARGET_TRIPLET $ENV{VCPKG_DEFAULT_TRIPLET})
+  endif()
+endif()
+
+enable_language(C)
+enable_language(CXX)
 
 if (MSVC)
   set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /DOpenslide_VERSION=\"${Openslide_VERSION}\"")
@@ -19,28 +42,7 @@ else ()
   set(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DOpenslide_VERSION=\"${Openslide_VERSION}\"")
 endif()
 
-option(CMAKE_VERBOSE_MAKEFILE "Create verbose makefile" OFF)
-option(ENABLE_VCPKG_INTEGRATION "Enable VCPKG integration" ON)
-option(PYTHON_WRAP "Enable Python wrap compilation" OFF)
-option(BUILD_TEST "Enable Testing compilation" OFF)
-option(BUILD_DOCS "Enable Documentaion builid support" OFF)
-
-if(ENABLE_VCPKG_INTEGRATION AND DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
-  message(STATUS "VCPKG found: $ENV{VCPKG_ROOT}")
-  message(STATUS "Using VCPKG integration")
-endif()
-
 project(Openslide VERSION ${Openslide_VERSION})
-
-if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  set(USE_INTEGRATED_LIBS "TRUE" CACHE BOOL "Use libs distributed with this repo")
-else()
-  set(USE_INTEGRATED_LIBS "FALSE" CACHE BOOL "Use libs distributed with this repo")
-endif()
-
-enable_language(C)
-enable_language(CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
@@ -60,12 +62,12 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Install prefix" FORCE)
 endif()
 
-set(INSTALL_BIN_DIR      ${CMAKE_SOURCE_DIR}/bin                            CACHE PATH "Path where exe and dll will be installed")
-set(INSTALL_LIB_DIR      ${CMAKE_SOURCE_DIR}/lib                            CACHE PATH "Path where lib will be installed")
-set(PYC_DIR              ${CMAKE_SOURCE_DIR}/python                         CACHE PATH "Path where find cython files") # cython directory
+set(INSTALL_BIN_DIR      ${CMAKE_CURRENT_LIST_DIR}/bin                            CACHE PATH "Path where exe and dll will be installed")
+set(INSTALL_LIB_DIR      ${CMAKE_CURRENT_LIST_DIR}/lib                            CACHE PATH "Path where lib will be installed")
+set(PYC_DIR              ${CMAKE_CURRENT_LIST_DIR}/python                         CACHE PATH "Path where find cython files") # cython directory
 
-set(INSTALL_INCLUDE_DIR  "${CMAKE_CURRENT_LIST_DIR}/share/include/openslide"  CACHE PATH "Path where headers will be installed")
-set(INSTALL_CMAKE_DIR    "${CMAKE_CURRENT_LIST_DIR}/share/openslide"          CACHE PATH "Path where cmake configs will be installed")
+set(INSTALL_INCLUDE_DIR  "include/openslide"  CACHE PATH "Path where headers will be installed")
+set(INSTALL_CMAKE_DIR    "share/openslide"    CACHE PATH "Path where cmake configs will be installed")
 
 set(CMAKE_DEBUG_POSTFIX d)
 
@@ -174,14 +176,23 @@ if(CMAKE_COMPILER_IS_GNUCC OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   string(REGEX REPLACE "-O3" "-O3" CMAKE_C_FLAGS_RELEASE ${CMAKE_C_FLAGS_RELEASE})
 endif()
 
-set(Openslide_INSTALL_INCLUDE_DIR ${INSTALL_INCLUDE_DIR})
+
+# Make relative paths absolute (needed later on)
+foreach (p LIB BIN INCLUDE CMAKE)
+  set (var INSTALL_${p}_DIR)
+  if (NOT IS_ABSOLUTE "${${var}}")
+    set (FULLPATH_${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+  endif()
+endforeach()
 
 configure_file(
   "${CMAKE_CURRENT_LIST_DIR}/src/version.h.in"
   "${CMAKE_CURRENT_LIST_DIR}/src/version.h"
 )
 
-configure_file(${CMAKE_SOURCE_DIR}/openslide.pc.in ${CMAKE_SOURCE_DIR}/openslide.pc @ONLY)
+configure_file(
+  "${CMAKE_CURRENT_LIST_DIR}/openslide.pc.in"
+  "${CMAKE_CURRENT_LIST_DIR}/openslide.pc" @ONLY)
 message(STATUS "Pkg-config generated")
 
 set (openslidelib openslide)
@@ -197,7 +208,7 @@ check_include_file("fcntl.h" HAVE_FCNTL)
 check_include_file("stdio.h" HAVE_FSEEKO)
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 check_include_file("memory.h" HAVE_MEMORY_H)
-check_symbol_exists(proc_pidfdinfo, "libproc.h" HAVE_PROC_PIDFDINFO)
+check_symbol_exists(proc_pidfdinfo "libproc.h" HAVE_PROC_PIDFDINFO)
 check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("stdlib.h" HAVE_STDLIB_H)
 check_include_file("strings.h" HAVE_STRINGS_H)
@@ -210,7 +221,9 @@ set(HAVE_VALGRIND ${VALGRIND_FOUND})
 set(PACKAGE_BUGREPORT "openslide-users@lists.andrew.cmu.edu")
 check_symbol_exists(_wfopen, "stdio.h" HAVE__WFOPEN)
 
-configure_file(${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/config.h @ONLY)
+configure_file(
+  "${CMAKE_CURRENT_LIST_DIR}/config.h.in"
+  "${CMAKE_CURRENT_LIST_DIR}/config.h" @ONLY)
 
 ###########################################################################
 
@@ -241,34 +254,39 @@ if ( PYTHON_WRAP )
 endif ()
 
 if (BUILD_DOCS)
-  add_subdirectory(${CMAKE_SOURCE_DIR}/doc/)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/doc/)
 endif ()
 
 if ( BUILD_TEST )
   if ( MSVC )
     message(WARNING "Windows support for the testing is currently disabled. We are working on it!")
   else ()
-    add_subdirectory(${CMAKE_SOURCE_DIR}/test)
+    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/test)
   endif ()
 endif ()
 
+if ( BUILD_JAVA )
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/java/)
+endif ()
+
+if ( BUILD_JS )
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/js/)
+endif ()
 
 add_library(${openslidelib} SHARED ${sources} ${headers})
 set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-#target_compile_definitions(${openslidelib} PRIVATE LIB_EXPORTS=1)
-target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${Openslide_INSTALL_INCLUDE_DIR}>)
+target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>)
 target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
-#target_compile_definitions(${openslidelib} PRIVATE -DUSE_CMAKE_LIBS)
 target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 
-set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${headers}")
+set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${CMAKE_CURRENT_LIST_DIR}/src/openslide.h")
 set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 
 install(TARGETS ${openslidelib} EXPORT OpenslideTargets
-  RUNTIME DESTINATION ${INSTALL_BIN_DIR}
-  LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-  ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
-  PUBLIC_HEADER DESTINATION ${INSTALL_INCLUDE_DIR}
+  RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
+  LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
+  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
+  PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}"
   COMPONENT dev
 )
 
@@ -283,7 +301,7 @@ export(PACKAGE Openslide)
 
 # Create the OpenslideConfig.cmake
 # First of all we compute the relative path between the cmake config file and the include path
-file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}" "${INSTALL_INCLUDE_DIR}")
+file(RELATIVE_PATH REL_INCLUDE_DIR "${FULLPATH_INSTALL_CMAKE_DIR}" "${FULLPATH_INSTALL_INCLUDE_DIR}")
 set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 configure_file(OpenslideConfig.cmake.in "${PROJECT_BINARY_DIR}/OpenslideConfig.cmake" @ONLY)
 set(CONF_INCLUDE_DIRS "\${Openslide_CMAKE_DIR}/${REL_INCLUDE_DIR}")

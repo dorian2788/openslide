@@ -3,6 +3,7 @@
 
 from libcpp cimport bool
 from openslide cimport openslide_t
+from numpy cimport int64_t
 
 cdef extern from "deepzoom.h":
 
@@ -24,11 +25,11 @@ cdef extern from "deepzoom.h":
   const int deepzoom_get_plane_count(deepzoom_t * osr);
   const dimensions_t * deepzoom_get_level_tiles(deepzoom_t * dpz);
   const dimensions_t * deepzoom_get_level_dimensions(deepzoom_t * dpz);
-  void deepzoom_get_l0_dimensions(deepzoom_t *dpz, long int *w, long int *h)
+  void deepzoom_get_l0_dimensions(deepzoom_t *dpz, int64_t *w, int64_t *h)
   void deepzoom_get_micron_per_pixel(deepzoom_t *dpz, double *mppx, double *mppy)
-  const long int deepzoom_get_tile_count(deepzoom_t * dpz);
-  void deepzoom_get_tile_info(deepzoom_t * dpz, int level, long int w, long int h, long int *initx, long int *inity, int *lvl, long int *outw, long int *outh, long int *sw, long int *sh);
-  void deepzoom_get_tile(deepzoom_t * dpz, long int plane, int level, long int w, long int h);
+  const int64_t deepzoom_get_tile_count(deepzoom_t * dpz);
+  void deepzoom_get_tile_info(deepzoom_t * dpz, int level, int64_t w, int64_t h, int64_t *initx, int64_t *inity, int *lvl, int64_t *outw, int64_t *outh, int64_t *sw, int64_t *sh);
+  void deepzoom_get_tile(deepzoom_t * dpz, int64_t plane, int level, int64_t w, int64_t h);
 
   const char * const *deepzoom_get_property_names(deepzoom_t *dpz);
   const char *deepzoom_get_property_value(deepzoom_t *dpz, const char *name)

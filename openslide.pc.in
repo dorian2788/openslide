@@ -1,11 +1,9 @@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-libdir=@libdir@
-includedir=@includedir@
+libdir=@CMAKE_SOURCE_PATH@/lib
+includedir=@CMAKE_SOURCE_PATH@
 
 Name: openslide
 Description: A library for reading whole slide images.
 
-Version: @VERSION@
-Libs: -L${libdir} -l@CMAKE_STATIC_LIBRARY_PREFIX@openslide
-Cflags: -I${includedir}/openslide
+Version: @Openslide_VERSION@
+Libs: -L${libdir} -l@CMAKE_STATIC_LIBRARY_PREFIX@openslide/lib/
+Cflags: -I${includedir}/openslide/src/

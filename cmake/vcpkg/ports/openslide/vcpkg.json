@@ -1,0 +1,66 @@
+{
+  "name": "openslide",
+  "version-semver": "3.4.1",
+  "port-version": 1,
+  "description": "whole slide image file reader",
+  "homepage": "https://openslide.org/",
+  "license": "LGPL-2.1-only",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+    {
+      "name": "vcpkg-get-python-packages",
+      "host": true
+    },
+    {
+      "name": "tiff",
+      "host": true
+    },
+    {
+      "name": "glib",
+      "host": true
+    },
+    {
+      "name": "cairo",
+      "host": true
+    },
+    {
+      "name": "gdk-pixbuf",
+      "host": true
+    },
+    {
+      "name": "openjpeg",
+      "host": true
+    },
+    {
+      "name": "sqlite3",
+      "host": true
+    },
+    {
+      "name": "libxml2",
+      "host": true
+    },
+    {
+      "name": "zlib",
+      "host": true
+    },
+    {
+      "name": "libpng",
+      "host": true
+    }
+  ],
+  "features": {
+    "python": {
+      "description": "Python wrap of the library"
+    },
+    "java": {
+      "description": "Java binding of the library"
+    }
+  }
+}

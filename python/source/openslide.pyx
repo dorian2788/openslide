@@ -4,6 +4,7 @@
 from libc.stdlib cimport malloc
 from libcpp.string cimport string
 cimport numpy as np
+from numpy cimport int64_t
 
 import os
 import numpy as np
@@ -133,8 +134,8 @@ cdef class Openslide:
       the width and height are set to -1 and a OpenslideError
       is raised.
     '''
-    cdef long int [1] w
-    cdef long int [1] h
+    cdef int64_t [1] w
+    cdef int64_t [1] h
 
     openslide_get_level_dimensions(self.thisptr, self._level, w, h)
 
@@ -164,8 +165,8 @@ cdef class Openslide:
       the width and height are set to -1 and a OpenslideError
       is raised.
     '''
-    cdef long int [1] w
-    cdef long int [1] h
+    cdef int64_t [1] w
+    cdef int64_t [1] h
 
     openslide_get_associated_image_dimensions(self.thisptr, name.c_str(), w, h)
 

@@ -24,17 +24,23 @@ add_dependencies(pydeepzoom ${openslidelib})
 
 
 # Installation of targets
-install(TARGETS pyopenslide                               DESTINATION ${PYC_INC_DIR}/)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pyopenslide.cpp DESTINATION ${PYC_SRC_DIR} RENAME openslide.cpp)
+install(TARGETS pyopenslide                       DESTINATION ${PYC_INC_DIR}/)
+install(FILES ${CMAKE_SOURCE_DIR}/pyopenslide.cpp DESTINATION ${PYC_SRC_DIR} RENAME openslide.cpp)
 
-install(TARGETS pydeepzoom                                DESTINATION ${PYC_INC_DIR}/)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pydeepzoom.cpp  DESTINATION ${PYC_SRC_DIR} RENAME deepzoom.cpp)
+install(TARGETS pydeepzoom                        DESTINATION ${PYC_INC_DIR}/)
+install(FILES ${CMAKE_SOURCE_DIR}/pydeepzoom.cpp  DESTINATION ${PYC_SRC_DIR} RENAME deepzoom.cpp)
 
 # setup installation
 
-configure_file(${CMAKE_SOURCE_DIR}/setup.py.in ${CMAKE_SOURCE_DIR}/setup_.py @ONLY)
-configure_file(${PYC_DIR}/__version__.py.in ${PYC_DIR}/__version__.py @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/setup.cfg.in ${CMAKE_SOURCE_DIR}/setup.cfg @ONLY)
+configure_file(
+  "${CMAKE_SOURCE_DIR}/setup.py.in"
+  "${CMAKE_SOURCE_DIR}/setup_.py" @ONLY)
+configure_file(
+  "${PYC_DIR}/__version__.py.in"
+  "${PYC_DIR}/__version__.py" @ONLY)
+configure_file(
+  "${CMAKE_SOURCE_DIR}/setup.cfg.in"
+  "${CMAKE_SOURCE_DIR}/setup.cfg" @ONLY)
 
 # NOTE: the current installation is performed in development mode
 add_custom_target(setup_Openslide ALL

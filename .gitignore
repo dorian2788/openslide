@@ -55,6 +55,7 @@ Makefile.in
 [Bb]uild*/
 [Bb]in
 [Ss]hare/
+[Ii]nclude/
 src/version.h
 
 
@@ -69,3 +70,6 @@ python/__version__.py
 [Dd]oc/openslide.tag
 setup_.py
 setup.cfg
+*.pyd
+
+java/src/*.h
