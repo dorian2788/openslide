@@ -24,11 +24,11 @@ add_dependencies(pydeepzoom ${openslidelib})
 
 
 # Installation of targets
-install(TARGETS pyopenslide                       DESTINATION ${PYC_INC_DIR}/)
-install(FILES ${CMAKE_SOURCE_DIR}/pyopenslide.cpp DESTINATION ${PYC_SRC_DIR} RENAME openslide.cpp)
+install(TARGETS pyopenslide                               DESTINATION ${PYC_INC_DIR}/)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pyopenslide.cpp DESTINATION ${PYC_SRC_DIR} RENAME openslide.cpp)
 
-install(TARGETS pydeepzoom                        DESTINATION ${PYC_INC_DIR}/)
-install(FILES ${CMAKE_SOURCE_DIR}/pydeepzoom.cpp  DESTINATION ${PYC_SRC_DIR} RENAME deepzoom.cpp)
+install(TARGETS pydeepzoom                                DESTINATION ${PYC_INC_DIR}/)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pydeepzoom.cpp  DESTINATION ${PYC_SRC_DIR} RENAME deepzoom.cpp)
 
 # setup installation
 
