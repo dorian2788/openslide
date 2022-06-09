@@ -275,7 +275,6 @@ target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
 target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 
 set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${OPENSLIDE_HEADER}")
-set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 
 install(TARGETS ${openslidelib} EXPORT OpenslideTargets
   RUNTIME DESTINATION "${INSTALL_BIN_DIR}"

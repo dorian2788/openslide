@@ -643,7 +643,7 @@ static void range_get_bounds(struct _openslide_grid *_grid,
 static bool range_paint_region(struct _openslide_grid *_grid,
                                cairo_t *cr,
                                void *arg,
-                               double x, double y, double channel,
+                               double x, double y, G_GNUC_UNUSED double channel,
                                struct _openslide_level *level,
                                int32_t w, int32_t h,
                                GError **err) {

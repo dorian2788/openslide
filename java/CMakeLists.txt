@@ -16,23 +16,20 @@ include(UseJava)
 find_package(JNI REQUIRED)
 list (APPEND linked_jni_libs ${JNI_LIBRARIES})
 
-set(JAVA_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/src/")
-set(JAVA_ORG_DIR "${CMAKE_CURRENT_LIST_DIR}/org/openslide/")
-
-file (GLOB JAVA_SRC "${JAVA_ORG_DIR}/*.java")
+file (GLOB JAVA_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.java")
 add_jar(org_openslide
   SOURCES "${JAVA_SRC}"
-  MANIFEST "${CMAKE_CURRENT_LIST_DIR}/MANIFEST.MF"
+  MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/MANIFEST.MF"
   GENERATE_NATIVE_HEADERS openslide_jni_headers
 )
 
 set (OPENSLIDE_JAVA openslide-jni)
 
-add_library(${OPENSLIDE_JAVA} ${JAVA_SRC_DIR}/openslide-jni.c)
+add_library(${OPENSLIDE_JAVA} "${CMAKE_CURRENT_SOURCE_DIR}/src/openslide-jni.c")
 
 target_include_directories(${OPENSLIDE_JAVA} PRIVATE ${JNI_INCLUDE_DIRS})
-target_include_directories(${OPENSLIDE_JAVA} PRIVATE ${JAVA_SRC_DIR}/src)
-target_include_directories(${OPENSLIDE_JAVA} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src)
+target_include_directories(${OPENSLIDE_JAVA} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/")
+target_include_directories(${OPENSLIDE_JAVA} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
 
 target_link_directories(${OPENSLIDE_JAVA} PRIVATE ${JNI_INCLUDE_DIRS})
 

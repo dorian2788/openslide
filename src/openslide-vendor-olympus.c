@@ -227,8 +227,7 @@ struct tiff_image_desc {
 };
 
 
-static char *_get_parent_image_file(const char *filename,
-                                   GError **err) {
+static char *_get_parent_image_file(const char *filename) {
   // verify original VSI file in parent directory tree
 
   char *stackdir = g_path_get_dirname(filename);
@@ -518,7 +517,7 @@ static bool olympus_vsi_detect(const char *filename G_GNUC_UNUSED,
   return true;
 }
 
-static bool sis_header_read(struct sis_header * self, FILE * stream, GError **err) {
+static bool sis_header_read(struct sis_header * self, FILE * stream) {
   int check G_GNUC_UNUSED = 0;
   check = fread(self->magic, 1, sizeof(self->magic), stream);
   g_assert((strncmp(self->magic, SIS_MAGIC, 4) == 0));
@@ -550,7 +549,7 @@ static bool sis_header_read(struct sis_header * self, FILE * stream, GError **er
   return true;
 }
 
-static bool ets_header_read(struct ets_header * self, FILE * stream, GError **err) {
+static bool ets_header_read(struct ets_header * self, FILE * stream) {
   int check G_GNUC_UNUSED = 0;
   check = fread(self->magic, 1, sizeof(self->magic), stream);
   g_assert((strncmp(self->magic, ETS_MAGIC, 4) == 0));
@@ -585,7 +584,7 @@ static bool ets_header_read(struct ets_header * self, FILE * stream, GError **er
     uint8_t *backgroundColor = (uint8_t*)malloc(sizeof(uint8_t) * self->sizeC);
     check = fread(backgroundColor, sizeof(uint8_t), self->sizeC, stream);
 
-    for (int i = 0; i < self->sizeC; ++i) {
+    for (uint32_t i = 0; i < self->sizeC; ++i) {
       self->backgroundColor[i] = (uint8_t)(backgroundColor[i]);
     }
 
@@ -596,7 +595,7 @@ static bool ets_header_read(struct ets_header * self, FILE * stream, GError **er
     int32_t *backgroundColor = (int32_t*)malloc(sizeof(int32_t) * self->sizeC);
     check = fread(backgroundColor, sizeof(int32_t), self->sizeC, stream);
 
-    for (int i = 0; i < self->sizeC; ++i) {
+    for (uint32_t i = 0; i < self->sizeC; ++i) {
       self->backgroundColor[i] = (uint8_t)(backgroundColor[i]);
     }
 
@@ -836,16 +835,16 @@ int ascending_compare (const void * a, const void * b) {
 
 
 static bool olympus_open_ets(openslide_t *osr, const char *filename,
-                             struct _openslide_tifflike *tl,
-                             struct _openslide_hash *quickhash1, GError **err) {
+                             G_GNUC_UNUSED struct _openslide_tifflike *tl,
+                             G_GNUC_UNUSED struct _openslide_hash *quickhash1, GError **err) {
 
   struct tile *tiles = NULL;
   struct level **levels = NULL;
   uint32_t *tilexmax = NULL;
   uint32_t *tileymax = NULL;
 
-  int32_t level_count = 1;
-  int32_t channels = 0;
+  uint32_t level_count = 1;
+  uint32_t channels = 0;
 
   // open file
   FILE *f = _openslide_fopen(filename, "rb", err);
@@ -855,7 +854,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
 
   // SIS:
   struct sis_header *sh = g_slice_new0(struct sis_header);
-  if (!sis_header_read( sh, f, err )) {
+  if (!sis_header_read( sh, f )) {
     g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
                 "Errors in SIS header");
     goto FAIL;
@@ -863,7 +862,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
 
   // ETS:
   struct ets_header *eh = g_slice_new0(struct ets_header);
-  if (!ets_header_read( eh, f, err )) {
+  if (!ets_header_read( eh, f )) {
     g_set_error(err, OPENSLIDE_ERROR, OPENSLIDE_ERROR_FAILED,
                 "Errors in ETS header");
     goto FAIL;
@@ -877,7 +876,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
 
   // computes tiles dims
   tiles = g_new0(struct tile, sh->ntiles);
-  for (int i = 0; i < sh->ntiles; ++i) {
+  for (uint32_t i = 0; i < sh->ntiles; ++i) {
     struct tile t;
     // read tile images
     tile_read(&t, f);
@@ -896,7 +895,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
   tilexmax = g_new0(uint32_t, level_count);
   tileymax = g_new0(uint32_t, level_count);
 
-  for (int i = 0; i < sh->ntiles; ++i) {
+  for (uint32_t i = 0; i < sh->ntiles; ++i) {
     struct tile t = tiles[i];
     uint32_t lvl = t.level;
 
@@ -918,7 +917,7 @@ static bool olympus_open_ets(openslide_t *osr, const char *filename,
   uint32_t image_width = 0;
   uint32_t image_height = 0;
 
-  for (int i = 0; i < level_count; ++i) {
+  for (uint32_t i = 0; i < level_count; ++i) {
     struct level *l = g_slice_new0(struct level);
 
     // compute image info:
@@ -999,7 +998,7 @@ FAIL:
   }
 
   if (levels != NULL) {
-    for (int i = 0; i < level_count; ++i) {
+    for (uint32_t i = 0; i < level_count; ++i) {
       struct level *l = levels[i];
       if (l) {
         _openslide_grid_destroy(l->grid);
@@ -1303,8 +1302,8 @@ static void set_prop(openslide_t *osr, const char *name, const char *value) {
 }
 
 static bool olympus_open_tif(openslide_t *osr, const char *filename,
-                             struct _openslide_tifflike *tl,
-                             struct _openslide_hash *quickhash1, GError **err) {
+                             G_GNUC_UNUSED struct _openslide_tifflike *tl,
+                             G_GNUC_UNUSED struct _openslide_hash *quickhash1, GError **err) {
 
   GPtrArray *level_array = g_ptr_array_new();
 
@@ -1478,7 +1477,7 @@ static bool olympus_open_vsi(openslide_t *osr, const char *filename,
     // A possible solution could be given by checking the associated
     // .vsi file in the parent directory but we must be sure about
     // the directory order !
-    char *imagefile = _get_parent_image_file(filename, err);
+    char *imagefile = _get_parent_image_file(filename);
     success = g_file_test(imagefile, G_FILE_TEST_EXISTS);
 
     if (success) {
@@ -1541,7 +1540,7 @@ static bool olympus_open_vsi(openslide_t *osr, const char *filename,
 
   } else if (g_str_has_suffix(filename, TIF_EXT)) { // otherwise it could be a tiff
 
-    char *imagefile = _get_parent_image_file(filename, err);
+    char *imagefile = _get_parent_image_file(filename);
     success = g_file_test(imagefile, G_FILE_TEST_EXISTS);
 
     if (success) {
