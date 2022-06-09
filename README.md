@@ -327,7 +327,7 @@ or more easily
 
 if you are working on a Windows machine the correct script to call is the [`build.ps1`](https://Nico-Curti/openslide/blob/main/build.ps1) with the same command line arguments.
 
-**NOTE:** if you want enable the `Cython` support compile the library with `-DPYWRAP:BOOL=ON`.
+**NOTE:** if you want enable the `Cython` support compile the library with `-DPYTHON_Openslide:BOOL=ON`.
 The `Cython` packages will be compiled and correctly positioned in the `openslide` Python package **BUT** you need to run also the setup before use it.
 An alternative is to install the `Python` package directly with the setup script: in this way the `CMake` is called inside the package building and all the dependencies automatically checked.
 
@@ -335,7 +335,7 @@ An alternative is to install the `Python` package directly with the setup script
 
 #### Python package
 
-If you have already built the `openslide` `C` library the installation is performed faster and the `Cython` wrap was already built using the `-DPYWRAP` definition.
+If you have already built the `openslide` `C` library the installation is performed faster and the `Cython` wrap was already built using the `-DPYTHON_Openslide` definition.
 Otherwise the full list of dependencies is build.
 
 In both cases the installation steps are

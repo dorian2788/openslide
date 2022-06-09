@@ -65,7 +65,9 @@ class cmake_build_ext (build_ext):
         '-DCMAKE_BUILD_TYPE:STRING=' + config,
         #'-DBUILD_DOCS:BOOL=OFF',
         '-DBUILD_TEST:BOOL=OFF',
-        '-DPYTHON_WRAP:BOOL=ON'
+        '-DPYTHON_Openslide:BOOL=ON',
+        '-DBUILD_JAVA:BOOL=OFF',
+        '-DBUILD_JS:BOOL=OFF',
     ]
 
     if platform.system() == 'Windows':

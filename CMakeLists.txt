@@ -14,7 +14,7 @@ set (CMAKE_PROJECT_HOMEPAGE_URL "https://github.com/Nico-Curti/openslide")
 message (STATUS "Openslide VERSION: ${Openslide_VERSION}")
 
 option(CMAKE_VERBOSE_MAKEFILE "Create verbose makefile" OFF)
-option(PYTHON_WRAP "Enable Python wrap compilation" OFF)
+option(PYTHON_Openslide "Enable Python wrap compilation" OFF)
 option(BUILD_TEST "Enable Testing compilation" OFF)
 option(BUILD_DOCS "Enable Documentation build support" OFF)
 option(BUILD_JAVA "Enable JAVA build support" OFF)
@@ -46,7 +46,7 @@ project(Openslide VERSION ${Openslide_VERSION})
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules/" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/" ${CMAKE_MODULE_PATH})
 
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -59,12 +59,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Install prefix" FORCE)
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "Install prefix" FORCE)
 endif()
 
-set(INSTALL_BIN_DIR      ${CMAKE_CURRENT_LIST_DIR}/bin                            CACHE PATH "Path where exe and dll will be installed")
-set(INSTALL_LIB_DIR      ${CMAKE_CURRENT_LIST_DIR}/lib                            CACHE PATH "Path where lib will be installed")
-set(PYC_DIR              ${CMAKE_CURRENT_LIST_DIR}/python                         CACHE PATH "Path where find cython files") # cython directory
+set(INSTALL_BIN_DIR      ${CMAKE_CURRENT_LIST_DIR}/bin       CACHE PATH "Path where exe and dll will be installed")
+set(INSTALL_LIB_DIR      ${CMAKE_CURRENT_LIST_DIR}/lib       CACHE PATH "Path where lib will be installed")
 
 set(INSTALL_INCLUDE_DIR  "include/openslide"  CACHE PATH "Path where headers will be installed")
 set(INSTALL_CMAKE_DIR    "share/openslide"    CACHE PATH "Path where cmake configs will be installed")
@@ -77,7 +76,7 @@ include_directories(${TIFF_INCLUDE_DIRS})
 link_directories(${TIFF_INCLUDE_DIRS})
 list (APPEND linked_libs ${TIFF_LIBRARIES})
 
-find_package(GLIB REQUIRED)
+find_package(GLIB REQUIRED COMPONENTS gio gobject gthread)
 include_directories(${GLIB_INCLUDE_DIRS})
 link_directories(${GLIB_INCLUDE_DIRS})
 list (APPEND linked_libs ${GLIB_LIBRARIES})
@@ -186,13 +185,13 @@ foreach (p LIB BIN INCLUDE CMAKE)
 endforeach()
 
 configure_file(
-  "${CMAKE_CURRENT_LIST_DIR}/src/version.h.in"
-  "${CMAKE_CURRENT_LIST_DIR}/src/version.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h"
 )
 
 configure_file(
-  "${CMAKE_CURRENT_LIST_DIR}/openslide.pc.in"
-  "${CMAKE_CURRENT_LIST_DIR}/openslide.pc" @ONLY)
+  "${CMAKE_CURRENT_SOURCE_DIR}/openslide.pc.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/openslide.pc" @ONLY)
 message(STATUS "Pkg-config generated")
 
 set (openslidelib openslide)
@@ -222,64 +221,64 @@ set(PACKAGE_BUGREPORT "openslide-users@lists.andrew.cmu.edu")
 check_symbol_exists(_wfopen, "stdio.h" HAVE__WFOPEN)
 
 configure_file(
-  "${CMAKE_CURRENT_LIST_DIR}/config.h.in"
-  "${CMAKE_CURRENT_LIST_DIR}/config.h" @ONLY)
+  "${CMAKE_CURRENT_SOURCE_DIR}/config.h.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/config.h" @ONLY)
 
 ###########################################################################
 
 #look for all *.h files in src folder
-file(GLOB headers "${CMAKE_CURRENT_LIST_DIR}/src/*.h")
+file(GLOB OPENSLIDE_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
 #look for all *.c files in src folder
-file(GLOB sources "${CMAKE_CURRENT_LIST_DIR}/src/*.c")
-list(REMOVE_ITEM sources
-  ${CMAKE_CURRENT_LIST_DIR}/src/make-tables.c
+file(GLOB OPENSLIDE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+list(REMOVE_ITEM OPENSLIDE_SRC
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/make-tables.c"
 )
 
-if ( PYTHON_WRAP )
+if ( PYTHON_Openslide )
 
   include( UseCython )
   find_package (Python REQUIRED COMPONENTS Interpreter)
   find_package(NumPy REQUIRED)
   include_directories(${NumPy_INCLUDE_DIRS})
   add_definitions (-DNPY_NO_DEPRECATED_API)
-  add_subdirectory(${PYC_DIR}/source)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/python/source")
 
-  include_directories(${PYC_DIR}/lib)
-  file(GLOB deepzoom_sources "${PYC_DIR}/lib/*.c")
-  file(GLOB deepzoom_headers "${PYC_DIR}/lib/*.h")
-  list(APPEND sources ${deepzoom_sources})
-  list(APPEND headers ${deepzoom_headers})
+  include_directories("${CMAKE_CURRENT_SOURCE_DIR}/python/lib")
+  file(GLOB DEEPZOOM_SRC "${CMAKE_CURRENT_SOURCE_DIR}/python/lib/*.c")
+  file(GLOB DEEPZOOM_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/python/lib/*.h")
+  list(APPEND OPENSLIDE_SRC ${DEEPZOOM_SRC})
+  list(APPEND OPENSLIDE_HEADER ${DEEPZOOM_HEADER})
 
 endif ()
 
 if (BUILD_DOCS)
-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/doc/)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/doc/")
 endif ()
 
 if ( BUILD_TEST )
   if ( MSVC )
     message(WARNING "Windows support for the testing is currently disabled. We are working on it!")
   else ()
-    add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/test)
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/test")
   endif ()
 endif ()
 
 if ( BUILD_JAVA )
-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/java/)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/java/")
 endif ()
 
 if ( BUILD_JS )
-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/js/)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/js/")
 endif ()
 
-add_library(${openslidelib} SHARED ${sources} ${headers})
+add_library(${openslidelib} SHARED ${OPENSLIDE_SRC} ${OPENSLIDE_HEADER})
 set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src> $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>)
+target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src> $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>)
 target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
 target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 
-set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${CMAKE_CURRENT_LIST_DIR}/src/openslide.h")
+set_target_properties(${openslidelib} PROPERTIES PUBLIC_HEADER "${OPENSLIDE_HEADER}")
 set_target_properties(${openslidelib} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 
 install(TARGETS ${openslidelib} EXPORT OpenslideTargets

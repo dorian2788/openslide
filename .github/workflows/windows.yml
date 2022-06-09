@@ -35,11 +35,10 @@ jobs:
     - name: Restore from cache and run vcpkg (Windows)
       env:
         vcpkgResponseFile: ${{ github.workspace }}/cmake/vcpkg_windows.diff
-      uses: lukka/run-vcpkg@v7
+      uses: lukka/run-vcpkg@v10
       with:
         vcpkgArguments: '@${{ env.vcpkgResponseFile }}'
         vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-        vcpkgGitCommitId: 'e8dbfcf6797a270ed5be8550248f7fe4fe5dec79'
         appendedCacheKey: ${{ hashFiles(env.vcpkgResponseFile) }}
 
     - name: Build with CMake and vcpkg
@@ -49,7 +48,7 @@ jobs:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
         useVcpkgToolchainFile: true
         buildDirectory: '${{ runner.workspace }}/buildDirectory'
-        cmakeAppendedArgs: "-G\"${{ matrix.cfg.generator }}\" -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_TEST:BOOL=OFF -DPYWRAP:BOOL=OFF"
+        cmakeAppendedArgs: "-G\"${{ matrix.cfg.generator }}\" -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_TEST:BOOL=OFF -DPYTHON_Openslide:BOOL=OFF -DBUILD_JAVA:BOOL=OFF -DBUILD_JS:BOOL=OFF"
         cmakeBuildType: 'Release'
         buildWithCMakeArgs: '--config Release --target install'
 

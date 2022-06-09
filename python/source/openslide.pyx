@@ -13,6 +13,7 @@ __author__  = ['Nico Curti']
 __email__ = ['nico.curti2@unibo.it']
 
 __all__ = ['Openslide', 'OpenslideError',
+           'detect_vendor',
            'BRIGHTFIELD', 'FLUORESCENCE']
 
 
@@ -606,3 +607,46 @@ cdef class Openslide:
     '''
     class_name = self.__class__.__qualname__
     return '{0}(level={1})'.format(class_name, self.level)
+
+
+def detect_vendor (str filename) -> bool:
+  '''
+  Quickly determine whether a whole slide image is recognized.
+
+  If OpenSlide recognizes the file referenced by filename, return a
+  string identifying the slide format vendor.  This is equivalent to the
+  value of the #OPENSLIDE_PROPERTY_NAME_VENDOR property.  Calling
+  openslide_open() on this file will return a valid OpenSlide object or
+  an OpenSlide object in error state.
+
+  Otherwise, return NULL.  Calling openslide_open() on this file will also
+  return NULL.
+
+  Parameters
+  ----------
+    filename : str
+      The filename to check. On Windows, this must be in UTF-8.
+
+  Returns
+  -------
+    check : bool
+      If openslide_open() will succeed.
+
+  Notes
+  -----
+  .. warning::
+    This function uses the openslide_detect_vendor() to efficiently check whether
+    a slide file is recognized by OpenSlide, since the original openslide_can_open
+    is deprecated.
+  '''
+  if not isinstance(filename, str) and not isinstance(filename, bytes):
+    raise TypeError('{} must be in string format'.format(filename))
+
+  if not os.path.isfile(filename):
+    raise FileNotFoundError('Could not open or find the data file. Given: {}'.format(filename))
+
+  filename_bytes = filename.encode('utf-8') if isinstance(filename, str) else filename
+
+  cdef const char * vendor = openslide_detect_vendor(filename_bytes)
+
+  return not (vendor is NULL)
