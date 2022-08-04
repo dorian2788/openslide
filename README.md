@@ -235,7 +235,8 @@ The dependency of the C `openslide` package are:
 
 You can easily install all the dependencies with the following commands:
 
-**Linux**
+<details><summary><b>Linux</b></summary>
+<p>
 
 ```bash
 sudo apt install -y libtiff-dev glib2.0 libcairo2-dev libgdk-pixbuf2.0-dev libopenjp2-7 libsqlite3-dev libxml2-dev zlib1g-dev libpng-dev
@@ -253,11 +254,19 @@ sudo make install
 cd .. && cd ..
 ```
 
-> :warning: The older versions of Ubuntu don't support the `glib2.0` library installation, but you can substitute the installation with `libglib2.0-dev`.
+| :warning: WARNING |
+|:------------------|
+| The older versions of Ubuntu don't support the `glib2.0` library installation, but you can substitute the installation with `libglib2.0-dev`. |
 
-> :warning: The latest versions of Ubuntu don't need to manually install the `OpenJPEG` library since it is already included into the `libopenjp2-7` distribution.
+| :warning: WARNING |
+|:------------------|
+| The latest versions of Ubuntu don't need to manually install the `OpenJPEG` library since it is already included into the `libopenjp2-7` distribution. |
 
-**MacOS**
+</p>
+</details>
+
+<details><summary><b>MacOS</b></summary>
+<p>
 
 ```bash
 brew install -y libtiff-dev libglib2.0-dev libcairo2-dev libgdk-pixbuf2.0-dev libjpeg-dev libsqlite3-dev libxml2-dev zlib1g-dev libpng-dev
@@ -274,7 +283,19 @@ sudo make install
 cd .. && cd ..
 ```
 
-**Windows**
+| :warning: WARNING |
+|:------------------|
+| The older versions of Ubuntu don't support the `glib2.0` library installation, but you can substitute the installation with `libglib2.0-dev`. |
+
+| :warning: WARNING |
+|:------------------|
+| The latest versions of Ubuntu don't need to manually install the `OpenJPEG` library since it is already included into the `libopenjp2-7` distribution. |
+
+</p>
+</details>
+
+<details><summary><b>Windows (7+)</b></summary>
+<p>
 
 ```PowerShell
 git clone https://github.com/Microsoft/vcpkg.git
@@ -284,15 +305,24 @@ cd vcpkg
 .\vcpkg install tiff:x64-windows glib:x64-windows cairo:x64-windows gdk-pixbuf:x64-windows openjpeg:x64-windows sqlite3:x64-windows libxml2:x64-windows zlib:x64-windows libpng:x64-windows
 ```
 
-> :warning: The Python installation of the library requires the manual setting of the `VCPKG_ROOT` environment variable.
-> Please set this variable to the vcpkg root dir before the installation of the package.
+| :warning: WARNING |
+|:------------------|
+| The Python installation of the library requires the manual setting of the `VCPKG_ROOT` environment variable. Please set this variable to the vcpkg root dir before the installation of the package. |
 
-> :warning: Despite the manual installation of the full set of libraries you could get some `Missing library` errors: in these cases (probably) you are working with an old version of `CMake` (we are still working on the minimum cmake version required), thus we suggest to update your CMake and retry the building.
+| :warning: WARNING |
+|:------------------|
+| Despite the manual installation of the full set of libraries you could get some `Missing library` errors: in these cases (probably) you are working with an old version of `CMake` (we are still working on the minimum cmake version required), thus we suggest to update your CMake and retry the building. |
 
-> :warning: There is a known issue related to the `libpixman-v0.38` package which could affect the correct execution of some `Openslide` commands (ref. [here](https://github.com/openslide/openslide/issues/291#issuecomment-722935212)).
-> The only available workaround is to downgrade or update your current installed version avoiding this particular version of the library!
+| :warning: WARNING |
+|:------------------|
+| There is a known issue related to the `libpixman-v0.38` package which could affect the correct execution of some `Openslide` commands (ref. [here](https://github.com/openslide/openslide/issues/291#issuecomment-722935212)). The only available workaround is to downgrade or update your current installed version avoiding this particular version of the library! |
 
-> :warning: Pay attention to work with the latest version of vcpkg package!
+| :warning: WARNING |
+|:------------------|
+| Pay attention to work with the latest version of vcpkg package! |
+
+</p>
+</details>
 
 The only dependencies of the Python `openslide` package are:
 
@@ -319,46 +349,74 @@ mkdir -p build
 cd build && cmake .. && cmake --build . --target install
 ```
 
-or more easily
+`Openslide` could be built with CMake and Make or with the *build* scripts in the project.
+Example:
 
-```bash
-./build.sh Release
-```
+|              |  **Linux**    |  **MacOS**    |  **Windows**  |
+|:------------:|:--------------|:--------------|:--------------|
+| **Script**   | `./build.sh`  | `./build.sh`  | `./build.ps1` |
 
-if you are working on a Windows machine the correct script to call is the [`build.ps1`](https://Nico-Curti/openslide/blob/main/build.ps1) with the same command line arguments.
+The `CMake` command line can be customized according to the following parameters:
 
-**NOTE:** if you want enable the `Cython` support compile the library with `-DPYTHON_Openslide:BOOL=ON`.
-The `Cython` packages will be compiled and correctly positioned in the `openslide` Python package **BUT** you need to run also the setup before use it.
-An alternative is to install the `Python` package directly with the setup script: in this way the `CMake` is called inside the package building and all the dependencies automatically checked.
-
-**NOTE:** if you want enable the building of testing scripts you have to add the `-DBUILD_TEST:BOOL=ON` define to the CMake command line.
+* `-DPYTHON_Openslide:BOOL` : Enable/Disable the build of Python wrap of the library via Cython (see next section for Python requirements)
+* `-DBUILD_TEST:BOOL` : Enable/Disable the build of test scripts
+* `-DBUILD_DOCS:BOOL` : Enable/Disable the build of docs using Doxygen
+* `-DBUILD_JAVA:BOOL` : Enable/Disable the build of Java wrap
+* `-DBUILD_JS:BOOL` : Enable/Disable the build of Javascript wrap
 
 #### Python package
 
 If you have already built the `openslide` `C` library the installation is performed faster and the `Cython` wrap was already built using the `-DPYTHON_Openslide` definition.
 Otherwise the full list of dependencies is build.
 
-In both cases the installation steps are
+In both cases the installation steps are:
 
-```bash
-python -m pip install -r ./requirements.txt
+```mermaid
+graph LR;
+    A(Install<br>Requirements) -->|python -m pip install -r requirements.txt| B(Install<br>openslide)
+    B -->|python setup.py install| C(Package<br>Install)
+    B -->|python setup.py develop --user| D(Development<br>Mode)
 ```
 
-to install the prerequisites and then
+| :warning: WARNING |
+|:------------------|
+| The installation of the `Python` modules requires the `CMake` support and all the listed above libraries.<br>If you are working under *Window OS* we require the usage of `VCPKG` for the installation of the libraries and a precise configuration of the environment variables.<br>In particular you need to set the variables `VCPKG_ROOT=/path/to/vcpkg/rootdir/` and `VCPKG_DEFAULT_TRIPLET=x64-windows`.<br>A full working example of OS configuration can be found in the CI actions of the project, available [here](https://github.com/Nico-Curti/openslide/blob/main/.github/workflows/) |
 
-```bash
-python setup.py install
-```
+### Supported format
 
-or for installing in development mode:
+This forked version aims to extend the portability of Openslide library to multiple OS and multiple WSI formats.
+The complete list of supported formats is
 
-```bash
-python setup.py develop --user
-```
 
-> :warning: The current installation via pip has no requirements about the version of `setuptools` package.
-> If the already installed version of `setuptools` is `>= 50.*` you can find some troubles during the installation of our package (ref. [issue](https://github.com/Nico-Curti/rFBP/issues/5)).
-> We suggest to temporary downgrade the `setuptools` version to `49.3.0` to workaround this `setuptools` issue.
+|  **Scanner**                                                  |     **Format**             |    **Brightfield**          |    **Fluorescence**   |
+|:-------------------------------------------------------------:|:--------------------------:|:---------------------------:|:---------------------:|
+| [Aperio](https://openslide.org/formats/aperio/)               |     (.svs, .tif)           |         :+1:                |                       |
+| :star: [Tiff](https://openslide.org/formats/generic-tiff/)    |     (.tif)                 |         :+1:                |         :+1:          |
+| [Hamamatsu](https://openslide.org/formats/hamamatsu/)         |     (.vms, .vmu, .ndpi)    |         :+1:                |                       |
+| [Leica](https://openslide.org/formats/leica/)                 |     (.scn)                 |         :+1:                |                       |
+| [Mirax](https://openslide.org/formats/mirax/)                 |     (.mrxs)                |         :+1:                |                       |
+| :star: Olympus                                                |     (.vsi, .ets)           |         :+1:                |         :+1:          |
+| [Philips](https://openslide.org/formats/philips/)             |     (.tiff)                |         :+1:                |                       |
+| [Sakura](https://openslide.org/formats/sakura/)               |     (.svslide)             |         :+1:                |                       |
+| [Trestle](https://openslide.org/formats/trestle/)             |     (.tif)                 |         :+1:                |                       |
+| [Ventana](https://openslide.org/formats/ventana/)             |     (.bif, .tif)           |         :+1:                |                       |
 
-**Note:** The requirements of the `openslide` library are mandatory also for the `Cython` installation!
-Make sure to have installed all the requirements before running the `setup.py` command.
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| In the Olympus format we extend also the Tiff support to the OME-Tiff format :muscle: |
+
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| In the Tiff format we extend also the Tiff support to the JP2K compression :muscle: |
+
+### FAQ
+
+* **How can I install the library via `VCPKG` dependency manager?**
+
+The `openslide` library is not yet supported via `vcpkg` (I have not submitted any PR yet).
+However, in the [`cmake`](https://github.com/Nico-Curti/openslide/blob/master/cmake) folder you can find a complete directory-tree named `vcpkg`.
+You can simply copy&paste the entire `vcpkg` folder over the original (cloned [here](https://github.com/microsoft/vcpkg)) project to manage the entire installation of the library *also* via vcpkg.
+
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| Since no releases have been published yet, the [`portfile`](https://github.com/Nico-Curti/openslide/blob/master/cmake/ports/openslide/portfile.cmake) is not complete and you need to manually set the `REF` and `SHA512` variables! |

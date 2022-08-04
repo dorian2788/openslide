@@ -279,6 +279,9 @@ setup(
                                    'cython'],
   packages                      = find_packages(include=['python', 'python.*'], exclude=('test', 'testing')),
   include_package_data          = True, # no absolute paths are allowed
+  data_files                    = [('', ['CMakeLists.txt', 'README.md', 'LICENSE', 'setup.py.in', 'openslide.pc.in', 'OpenslideConfig.cmake.in']),
+                                   ('cmake', ['cmake/modules/FindCython.cmake', 'cmake/modules/FindSphinx.cmake', 'cmake/modules/UseCython.cmake']),
+                                  ],
   platforms                     = 'any',
   classifiers                   = [
                                    #'License :: OSI Approved :: LGPL License',

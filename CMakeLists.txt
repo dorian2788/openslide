@@ -10,6 +10,7 @@ set(Openslide_TWEAK_VERSION 0)
 
 set(Openslide_VERSION ${Openslide_MAJOR_VERSION}.${Openslide_MINOR_VERSION}.${Openslide_PATCH_VERSION}.${Openslide_TWEAK_VERSION})
 set (CMAKE_PROJECT_HOMEPAGE_URL "https://github.com/Nico-Curti/openslide")
+set (CMAKE_PROJECT_DESCRIPTION "Whole Slide Image file reader")
 
 message (STATUS "Openslide VERSION: ${Openslide_VERSION}")
 
@@ -62,11 +63,11 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "Install prefix" FORCE)
 endif()
 
-set(INSTALL_BIN_DIR      ${CMAKE_CURRENT_LIST_DIR}/bin       CACHE PATH "Path where exe and dll will be installed")
-set(INSTALL_LIB_DIR      ${CMAKE_CURRENT_LIST_DIR}/lib       CACHE PATH "Path where lib will be installed")
+set(INSTALL_BIN_DIR "${CMAKE_CURRENT_LIST_DIR}/bin" CACHE PATH "Path where exe and dll will be installed")
+set(INSTALL_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/lib" CACHE PATH "Path where lib will be installed")
 
-set(INSTALL_INCLUDE_DIR  "include/openslide"  CACHE PATH "Path where headers will be installed")
-set(INSTALL_CMAKE_DIR    "share/openslide"    CACHE PATH "Path where cmake configs will be installed")
+set(INSTALL_INCLUDE_DIR "include/openslide" CACHE PATH "Path where headers will be installed")
+set(INSTALL_CMAKE_DIR   "share/openslide"   CACHE PATH "Path where cmake configs will be installed")
 
 set(CMAKE_DEBUG_POSTFIX d)
 
@@ -270,7 +271,11 @@ endif ()
 
 add_library(${openslidelib} SHARED ${OPENSLIDE_SRC} ${OPENSLIDE_HEADER})
 set_target_properties(${openslidelib} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(${openslidelib} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src> $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>)
+target_include_directories(${openslidelib}
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>
+)
 target_link_libraries(${openslidelib} PUBLIC ${linked_libs})
 target_compile_definitions(${openslidelib} PRIVATE -D_OPENSLIDE_BUILDING_DLL)
 

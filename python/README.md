@@ -42,9 +42,13 @@ The complete list of supported formats is
 | [Trestle](https://openslide.org/formats/trestle/)             |     (.tif)                 |         :+1:                |                       |
 | [Ventana](https://openslide.org/formats/ventana/)             |     (.bif, .tif)           |         :+1:                |                       |
 
-**Note:** In the Olympus format we extend also the Tiff support to the OME-Tiff format :muscle:
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| In the Olympus format we extend also the Tiff support to the OME-Tiff format :muscle: |
 
-**Note 2:** In the Tiff format we extend also the Tiff support to the JP2K compression :muscle:
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| In the Tiff format we extend also the Tiff support to the JP2K compression :muscle: |
 
 ### Usage example
 
@@ -58,7 +62,9 @@ from openslide import OpenslideError
 from openslide import BRIGHTFIELD, FLUORESCENCE
 ```
 
-**NOTE:** In this new version of the library we added the `BRIGHTFIELD` and `FLUORESCENCE` as readable variables to switch from brightfield (already supported) and fluorescence!
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| In this new version of the library we added the `BRIGHTFIELD` and `FLUORESCENCE` as readable variables to switch from brightfield (already supported) and fluorescence! |
 
 The first one is the "real" openslide object, while the second is just an utility class for the exception management.
 
@@ -97,8 +103,9 @@ with Openslide(filename, dtype=BRIGHTFIELD) as osr:
     pprint(osr.header)
 ```
 
-**NOTE:** In this new version of the library we added an extra member to the `Openslide` class called `plane_count` as index of "planes" (aka fluorescence channels).
-In brightfield images all the RGB channels are stored into a single "plane", so the `plane_count` will be always 1.
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| In this new version of the library we added an extra member to the `Openslide` class called `plane_count` as index of "planes" (aka fluorescence channels). In brightfield images all the RGB channels are stored into a single "plane", so the `plane_count` will be always 1. |
 
 The most important thing to take care managing WSI data is the pyramid of resolution levels.
 To handle this feature we built a naive utility function to set the resolution level on which work.
@@ -140,8 +147,9 @@ The fluorescence supports is guaranteed for an arbitrary number of channels, but
 We override the standard `openslide_read_region` function to support this feature.
 Also in this case the result of the call is a classical `numpy` array with `int32_t` values.
 
-**NOTE:** For brightfield images the RGB channels are stored as `uint8_t` as any other classical RGB image!
-Fluorescence images support a wider range of gray-levels and therefore the data are stored with higher precision integers!
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| For brightfield images the RGB channels are stored as `uint8_t` as any other classical RGB image! Fluorescence images support a wider range of gray-levels and therefore the data are stored with higher precision integers! |
 
 ```python
 filename = 'fluorescence.vsi'
@@ -190,9 +198,9 @@ with Openslide(filename, dtype=FLUORESCENCE) as osr:
 
 ![fluorescence](https://drive.google.com/uc?export=view&id=1Yrt95E6rPn6-tUuYduSAWkVP3FYgybf8)
 
-**NOTE:** The resolution level size could not be an exact multiple of the tile size, so when we read the image via `openslide` it tries to pad it in the best way.
-This step produces a darker border around the image which should be excluded when we consider overall statistics of the image (eg. the global minimum).
-To avoid this issue, it is good practice to use the 2nd minimum of the image, obtained by the `true_min` lambda function declared above.
+| :triangular_flag_on_post: Note |
+|:-------------------------------|
+| The resolution level size could not be an exact multiple of the tile size, so when we read the image via `openslide` it tries to pad it in the best way. This step produces a darker border around the image which should be excluded when we consider overall statistics of the image (eg. the global minimum). To avoid this issue, it is good practice to use the 2nd minimum of the image, obtained by the `true_min` lambda function declared above. |
 
 ## Acknowledgments
 

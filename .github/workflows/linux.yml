@@ -1,4 +1,4 @@
-name: Linux openslide CI
+name: Linux
 
 on:
   push:

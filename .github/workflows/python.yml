@@ -1,4 +1,4 @@
-name: Python openslide CI
+name: Python
 
 on:
   push:
@@ -18,10 +18,10 @@ jobs:
     strategy:
       matrix:
         cfg:
-          - {os: ubuntu-latest, cc: gcc, cxx: g++, python-version: 3.5}
           - {os: ubuntu-latest, cc: gcc, cxx: g++, python-version: 3.6}
           - {os: ubuntu-latest, cc: gcc, cxx: g++, python-version: 3.7}
           - {os: ubuntu-latest, cc: gcc, cxx: g++, python-version: 3.8}
+          - {os: ubuntu-latest, cc: gcc, cxx: g++, python-version: 3.9}
 
           #- {os: windows-latest, cc: cl, cxx: MSVC19.28.29333.0, python-version: 3.5}
           #- {os: windows-latest, cc: cl, cxx: MSVC19.28.29333.0, python-version: 3.6}
