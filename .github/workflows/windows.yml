@@ -52,7 +52,7 @@ jobs:
         cmakeListsTxtPath: '${{ github.workspace }}/CMakeLists.txt'
         useVcpkgToolchainFile: true
         buildDirectory: '${{ runner.workspace }}/buildDirectory'
-        cmakeAppendedArgs: "-G\"${{ matrix.cfg.generator }}\" -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_TEST:BOOL=OFF -DPYTHON_Openslide:BOOL=OFF -DBUILD_JAVA:BOOL=OFF -DBUILD_JS:BOOL=OFF"
+        cmakeAppendedArgs: "-G\"${{ matrix.cfg.generator }}\" -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_TEST:BOOL=OFF -DPYTHON_Openslide:BOOL=OFF -DBUILD_JAVA:BOOL=OFF -DBUILD_JS:BOOL=OFF -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows"
         cmakeBuildType: 'Release'
         buildWithCMakeArgs: '--config Release --target install'
 
