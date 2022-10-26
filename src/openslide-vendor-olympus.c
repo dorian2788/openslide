@@ -564,6 +564,9 @@ static bool ets_header_read(struct ets_header * self, FILE * stream) {
   check = fread((char*)&self->colorspace, 1, sizeof(self->colorspace), stream);
   g_assert(((self->colorspace == COLORSPACE_BRIGHTFIELD) || (self->colorspace == COLORSPACE_FLUORESCENCE)));
   check = fread((char*)&self->compression, 1, sizeof(self->compression), stream); // codec
+  
+  printf("COMPRESSIONS: %d\n", self->compression);
+  
   g_assert(((self->compression == FORMAT_JPEG) || (self->compression == FORMAT_JP2)));
   check = fread((char*)&self->quality, 1, sizeof(self->quality), stream);
   //g_assert( self->quality == 90 || self->quality == 100 ); // some kind of JPEG quality ?
