@@ -279,8 +279,8 @@ static enum slide_format _get_related_image_file(const char *filename, char **im
     /***********************************************************************/
     //if (strncmp(slide_dir, "stack1", 6) == 0 && strlen(slide_dir) == 6)
     //  continue;
-    if (strncmp(slide_dir, "stack10000", 10) == 0)
-      continue;
+    // if (strncmp(slide_dir, "stack10000", 10) == 0)
+      // continue;
     //if (strncmp(slide_dir, "stack10002", 10) == 0)
     //  continue;
     /***********************************************************************/
@@ -1601,7 +1601,7 @@ static bool olympus_open_vsi(openslide_t *osr, const char *filename,
     }
 
   } else {
-    // continue since it could be an original VSI folder tree
+    // continue since it could be an original folder tree
   }
 
   struct _openslide_tiffcache *tc = _openslide_tiffcache_create(filename);
