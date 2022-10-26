@@ -268,6 +268,8 @@ static enum slide_format _get_related_image_file(const char *filename, char **im
 
   dir = g_dir_open(slidedat_path, 0, err);
   while ((slide_dir = g_dir_read_name(dir))) {
+    
+    printf("FILE :%s\n", slide_dir);
 
     // check directory name
     if (strncmp(slide_dir, "stack1", 6) < 0)
@@ -283,7 +285,7 @@ static enum slide_format _get_related_image_file(const char *filename, char **im
     //  continue;
     /***********************************************************************/
 
-    printf("VSI stack used: %s\n", slide_dir);
+    printf("NEW VSI stack used: %s\n", slide_dir);
 
     char *data_dir = g_build_filename(slidedat_path, slide_dir, NULL);
     char *current_file = NULL;
