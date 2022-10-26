@@ -277,8 +277,8 @@ static enum slide_format _get_related_image_file(const char *filename, char **im
     /***********************************************************************/
     //if (strncmp(slide_dir, "stack1", 6) == 0 && strlen(slide_dir) == 6)
     //  continue;
-    //if (strncmp(slide_dir, "stack10000", 10) == 0)
-    //  continue;
+    if (strncmp(slide_dir, "stack10000", 10) == 0)
+      continue;
     //if (strncmp(slide_dir, "stack10002", 10) == 0)
     //  continue;
     /***********************************************************************/
