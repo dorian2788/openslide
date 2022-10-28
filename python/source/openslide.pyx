@@ -1,7 +1,7 @@
 # distutils: language = c++
 # cython: language_level=2
 
-from libc.stdlib cimport malloc
+from libc.stdlib cimport malloc, free
 from libcpp.string cimport string
 cimport numpy as np
 from numpy cimport int64_t
@@ -483,6 +483,7 @@ cdef class Openslide:
     argb2rgba(u8, w * h * 4)
 
     img = np.asarray(<np.uint32_t[: h * w]> dest)
+    free(dest)
 
     # convert to a readable image
     img = img.view(dtype=np.uint8).reshape(h, w, 4)
