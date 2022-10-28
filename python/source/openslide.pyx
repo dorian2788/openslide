@@ -379,6 +379,7 @@ cdef class Openslide:
     argb2rgba(u8, w * h * 4)
 
     wsi = np.asarray(<np.uint32_t[: h * w]> dest)
+    free(dest)
 
     # convert to a readable image
     wsi = wsi.view(dtype=np.uint8).reshape(h, w, 4)
@@ -396,6 +397,7 @@ cdef class Openslide:
                            'The request shape is: ({:d}, {:d})'.format(*self.shape, w - x, h - y))
 
     wsi = np.asarray(<np.uint32_t[: h * w]> dest)
+    free(dest)
     wsi = wsi.reshape(h, w)
 
     return wsi
