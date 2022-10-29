@@ -71,6 +71,7 @@ cdef class Openslide:
 
     self._level = 0
     self._plane = dtype
+    cdef unsigned int * self._dest = NULL
 
     if self._plane != BRIGHTFIELD and self._plane != FLUORESCENCE:
        raise OpenslideError('Invalid Acquisition type give.')
@@ -383,11 +384,12 @@ cdef class Openslide:
 
     # convert to a readable image
     wsi = wsi.view(dtype=np.uint8).reshape(h, w, 4)
+    self._dest = dest
 
     return wsi
 
-  def _free_pointer_pls(self, np.ndarray ptr) -> None:
-    free(ptr)
+  def free_pointer_pls(self):
+    free(self._dest)
     return
 
   def _read_fluorescence_region(self, int level, long int x, long int y, long int plane, long int w, long int h) -> np.ndarray:
@@ -403,6 +405,7 @@ cdef class Openslide:
     wsi = np.asarray(<np.uint32_t[: h * w]> dest)
     # free(dest)
     wsi = wsi.reshape(h, w)
+    self._dest = dest
 
     return wsi
 
@@ -493,6 +496,7 @@ cdef class Openslide:
 
     # convert to a readable image
     img = img.view(dtype=np.uint8).reshape(h, w, 4)
+    self._dest = dest
 
     return img
 
