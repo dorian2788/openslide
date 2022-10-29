@@ -67,11 +67,12 @@ cdef class Openslide:
   .. [3] Numpy library. https://github.com/numpy/numpy
   '''
 
+  cdef unsigned int* _dest
+
   def __init__ (self, str filename=None, int dtype=BRIGHTFIELD):
 
     self._level = 0
     self._plane = dtype
-    cdef unsigned int * self._dest = NULL
 
     if self._plane != BRIGHTFIELD and self._plane != FLUORESCENCE:
        raise OpenslideError('Invalid Acquisition type give.')
