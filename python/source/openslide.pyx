@@ -67,7 +67,7 @@ cdef class Openslide:
   .. [3] Numpy library. https://github.com/numpy/numpy
   '''
 
-  cdef unsigned int* _dest
+  
 
   def __init__ (self, str filename=None, int dtype=BRIGHTFIELD):
 
