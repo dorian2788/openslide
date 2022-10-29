@@ -386,6 +386,10 @@ cdef class Openslide:
 
     return wsi
 
+  def _free_pointer_pls(self, np.ndarray ptr) -> None:
+    free(ptr)
+    return
+
   def _read_fluorescence_region(self, int level, long int x, long int y, long int plane, long int w, long int h) -> np.ndarray:
     cdef unsigned int * dest = <unsigned int *> malloc(w * h * sizeof(unsigned int))
 
