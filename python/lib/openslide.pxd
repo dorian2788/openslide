@@ -36,3 +36,4 @@ cdef class Openslide:
   cdef openslide_t * thisptr
   cdef int _level
   cdef int _plane
+  cdef unsigned int* _dest
